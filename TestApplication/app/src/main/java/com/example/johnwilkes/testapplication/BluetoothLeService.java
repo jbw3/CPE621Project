@@ -3,11 +3,14 @@ package com.example.johnwilkes.testapplication;
 import android.app.Service;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
+import android.os.IBinder;
+import android.support.annotation.Nullable;
 import android.util.Log;
 
-abstract public class BluetoothLeService extends Service
+public class BluetoothLeService extends Service
 {
     private final static String TAG = BluetoothLeService.class.getSimpleName();
 
@@ -28,6 +31,13 @@ abstract public class BluetoothLeService extends Service
 
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent)
+    {
+        return null;
+    }
 
     private final BluetoothGattCallback mGattCallback =
             new BluetoothGattCallback()
@@ -68,9 +78,38 @@ abstract public class BluetoothLeService extends Service
                     }
                 }
 
+                @Override
+                // Result of a characteristic read operation
+                public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
+                {
+                    if (status == BluetoothGatt.GATT_SUCCESS)
+                    {
+                        broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
+                    }
+                }
+
                 private void broadcastUpdate(final String action)
                 {
                     final Intent intent = new Intent(action);
+                    sendBroadcast(intent);
+                }
+
+                private void broadcastUpdate(final String action, final BluetoothGattCharacteristic characteristic)
+                {
+                    final Intent intent = new Intent(action);
+
+                    // write the data formatted in HEX
+                    final byte[] data = characteristic.getValue();
+                    if (data != null && data.length > 0)
+                    {
+                        final StringBuilder stringBuilder = new StringBuilder(data.length);
+                        for (byte byteChar : data)
+                        {
+                            stringBuilder.append(String.format("%02X ", byteChar));
+                        }
+                        intent.putExtra(EXTRA_DATA, new String(data) + "\n" +
+                                stringBuilder.toString());
+                    }
                     sendBroadcast(intent);
                 }
             };

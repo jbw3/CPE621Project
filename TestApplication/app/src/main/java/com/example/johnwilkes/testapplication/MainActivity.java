@@ -2,6 +2,8 @@ package com.example.johnwilkes.testapplication;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.content.Intent;
 import android.os.Bundle;
@@ -28,6 +30,7 @@ public class MainActivity extends AppCompatActivity
     private int numClicks;
     private BluetoothAdapter btAdapter;
     private Handler btScanHandler;
+    private BluetoothGatt btoothGatt;
 
     private ArrayList<String> devices;
     private ArrayAdapter<String> devicesAdapter;
@@ -36,7 +39,7 @@ public class MainActivity extends AppCompatActivity
             new BluetoothAdapter.LeScanCallback()
             {
                 @Override
-                public void onLeScan(final BluetoothDevice device, int rssi, byte[] scanRecord)
+                public void onLeScan(final BluetoothDevice device, final int rssi, byte[] scanRecord)
                 {
                     runOnUiThread(
                             new Runnable()
@@ -44,9 +47,42 @@ public class MainActivity extends AppCompatActivity
                                 @Override
                                 public void run()
                                 {
-                                    ListView listView = (ListView)findViewById(R.id.devicesList);
-                                    String str = String.format("Device: %s", device.getName());
-                                    Log.d("Bluetooth", str);
+                                    if (device != null)
+                                    {
+                                        String name = device.getName();
+                                        if (name == null)
+                                        {
+                                            name = "None";
+                                        }
+                                        String str = String.format("Name: %s,\nAddress: %s", name, device.getAddress());
+                                        Log.d("Bluetooth", str);
+                                        if (!devices.contains(str))
+                                        {
+                                            devices.add(str);
+                                            devicesAdapter.notifyDataSetChanged();
+
+                                            BluetoothGattCallback gattCallback = new BluetoothGattCallback()
+                                            {
+                                            };
+                                            BluetoothGatt btoothGatt = device.connectGatt(getApplicationContext(), true, gattCallback);
+                                            boolean ok = device.createBond();
+                                            Log.d("Bluetooth", String.format("Bonded: %b", ok));
+
+//                                            Log.d("Bluetooth", "Connected devices:");
+//                                            for (BluetoothDevice d : btoothGatt.getConnectedDevices())
+//                                            {
+//                                                String dName = d.getName();
+//                                                if (dName == null)
+//                                                {
+//                                                    Log.d("Bluetooth", "No name");
+//                                                }
+//                                                else
+//                                                {
+//                                                    Log.d("Bluetooth", d.getName());
+//                                                }
+//                                            }
+                                        }
+                                    }
                                 }
                             }
                     );
@@ -97,6 +133,13 @@ public class MainActivity extends AppCompatActivity
                 Intent enableBtoothIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 startActivityForResult(enableBtoothIntent, REQUEST_ENABLE_BT);
             }
+
+            int numBonded = btAdapter.getBondedDevices().size();
+            Log.d("onStart", String.format("Bonded Devices (%d):", numBonded));
+            for (BluetoothDevice device : btAdapter.getBondedDevices())
+            {
+                Log.d("onStart", String.format("Name: %s, Address: %s", device.getName(), device.getAddress()));
+            }
         }
     }
 
@@ -126,18 +169,19 @@ public class MainActivity extends AppCompatActivity
 
     public void onButtonClick(View v)
     {
-        ListView listView = (ListView)findViewById(R.id.devicesList);
-
         ++numClicks;
         textView.setText(String.format("The button was pressed %d time%s", numClicks, (numClicks != 1) ? "s" : ""));
 
-        devices.add(String.format("click %d", numClicks));
-        devicesAdapter.notifyDataSetChanged();
+//        devices.add(String.format("click %d", numClicks));
+//        devicesAdapter.notifyDataSetChanged();
     }
 
     public void onBluetoothScan(View v)
     {
         Log.d("Bluetooth", "scanning...");
+
+        devices.clear();
+        devicesAdapter.notifyDataSetChanged();
 
         // stop the scan after the specified period
         btScanHandler.postDelayed(

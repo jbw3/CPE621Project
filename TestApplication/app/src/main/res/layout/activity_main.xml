@@ -43,7 +43,6 @@
         android:layout_height="wrap_content"
         android:id="@+id/devicesList"
         android:layout_below="@+id/btButton"
-        android:layout_alignEnd="@+id/textView"
         android:layout_marginTop="8dp" />
 
 </RelativeLayout>
