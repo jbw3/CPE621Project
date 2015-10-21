@@ -1,0 +1,311 @@
+'//******************************************************************************
+'// Laird Technologies (c) 2013
+'//
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'// +++++                                                                      ++
+'// +++++  When UwTerminal downloads the app it will store it as a filenname   ++
+'// +++++  which consists of all characters up to the first . and excluding it ++
+'// +++++                                                                      ++
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'//
+'// Health Thermometer Profile
+'//
+'// Sends the tmeperature from the onboard sensor every TEMPERATURE_POLL_MS msec
+'//
+'// 21 Mar 2013
+'//    Created
+'//
+'//******************************************************************************
+
+'//******************************************************************************
+'// Definitions
+'//******************************************************************************
+
+#define DEVICENAME          "LAIRD_TS"
+#define APPEARANCE          BLE_APPEARANCE_GENERIC_THERMOMETER
+#define MANF_NAME           "Laird Technologies"
+#define MODELSTR            "BL600"
+#define SERIALNUM           "12345"
+#define HWREV               "HwRev1.0"
+#define SWREV               "SwRev1.0"
+#define SYSID               "\01\02\03\04\05\06\07\08"
+//#define SYSID               "@"
+//#define REGLIST             "\DE\AD\C0\DE"
+#define REGLIST             ""
+//#define PNPID               "\01\04\BF\03\20\00\01"
+#define PNPID               ""
+#define CHAR_CR             13
+
+
+        '// Minimum acceptable connection interval (0.5 seconds)
+#define MIN_CONN_INTERVAL                    500000
+        '// Maximum acceptable connection interval (1 second).
+#define MAX_CONN_INTERVAL                    1000000
+        '// Slave latency -- number of conn events that can be missed
+#define SLAVE_LATENCY                        0
+        '// Connection supervisory timeout (4 seconds) - max 32 seconds
+#define CONN_SUP_TIMEOUT                     4000000
+        '//DiscoverableMode, set to 0 for general mode, 1 for limited mode
+#define DISCOVERY_MODE                       0
+#define MAX_DEVNAME_CHRS                     10
+        '//Set Appearance advertise 0 to suppress
+#define ADV_APPEARANCE                       1
+        '//Advertise interval
+#define ADV_INTERVAL_MS                      25
+        '//Advertise timeout
+#define ADV_TIMEOUT_MS                       300000
+
+        '//Minimum long term key size in octets
+#define MIN_LTK_SIZE                         8
+        '//Maximum long term key size in octets
+#define MAX_LTK_SIZE                         16
+
+        '// Set this to non-zero to enable notiy on batt service
+#define BATT_NOTIFY                          0
+
+
+        '//Connection Update Negotiation paramters
+#define FIRST_CONN_PARAMS_UPDATE_DELAY       5000
+#define NEXT_CONN_PARAMS_UPDATE_DELAY        5000
+#define MAX_CONN_PARAMS_UPDATE_DELAY         15000
+
+        '//The temperature sensor is polled this timeout
+#define TEMPERATURE_POLL_MS                  (1000)
+
+'//******************************************************************************
+'// Debugging resource as early as possible
+'//******************************************************************************
+
+'//==============================================================================
+'//==============================================================================
+sub AssertResCode(rc,byval msg$ as string)
+  if(rc!=0)then
+    print msg$;" failed with ";integer.h' rc;"\n"
+  else
+    print msg$;" success\n"
+  endif
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub DbgMsg(byval msg$ as string)
+  print msg$;"\n"
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub DbgMsgVal(byval msg$ as string, byval vl as integer)
+  print msg$;" ";vl;"\n"
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub DbgPrnAdvReport(byref rp$ as string)
+  print "AdvRpt=";strhexize$(rp$);"\n"
+endsub
+
+
+'//******************************************************************************
+'// Library Import
+'//******************************************************************************
+#include "lib\health.thermometer.sblib"
+
+'//******************************************************************************
+'// Global Variable Declarations
+'//******************************************************************************
+
+dim msg$
+dim dt$
+
+'//******************************************************************************
+'// Initialisse Global Variable
+'//******************************************************************************
+
+dt$=""
+
+'//******************************************************************************
+'// Function and Subroutine definitions
+'//******************************************************************************
+
+'//==============================================================================
+'//==============================================================================
+sub InitTempSensor()
+  dim rc
+
+  '// poll sensor on a timer
+  TimerStart(0,TEMPERATURE_POLL_MS,1)
+
+  '// Temperature sensor is AIN4 which is on the S3 pin
+  rc = GpioSetFunc(4,1,2)  //remover the pull resistor
+  AssertResCode(rc,"GpioSetFunc")
+
+  rc = GpioSetFunc(4,3,0)  //set as analog in
+  AssertResCode(rc,"GpioSetFunc")
+endsub
+
+'//==============================================================================
+'// Bandgap = 1200mv
+'// Max Adc = 1024
+'// Input scaled by 2/3
+'//
+'// Hence mV = (((adc/MaxADC) * Bandgap)*3)/2
+'// refactoring for integer maths gives
+'//  mv = (adc * Bandgap * 3)/(MaxADC*2)
+'//  mv = (adc * 1200 * 3)/(1024 * 2)
+'//  mv = (adc *  600 * 3)/1024
+'//  mv = (adc *  150 * 3)/256
+'//  mv = (adc *   75 * 3)/128
+'//  mv = (adc *   225)/128
+'//==============================================================================
+function Adc2Mv(adc)
+  adc = (adc * 225)/128
+endfunc adc
+
+'//==============================================================================
+'//  ((1864-mV)*16)/1889 * 10 in 10th of mV
+'//==============================================================================
+function Mv2Temperature(mv)
+  mv = ((1864-mV) * 160)/189
+endfunc mv
+
+
+'//******************************************************************************
+'// Handler definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// This handler is called when TIMER 0 expires
+'//==============================================================================
+function HandlerTimer0() as integer
+  dim mV,tmp
+
+  if hConn != BLE_CONN_HANDLE_INVALID then
+    '// IN A CONNECTION
+    if indState==1 then
+      //make a sensor reading
+      mv = Adc2Mv(GpioRead(4))
+      //DbgMsg("\nAdc mV=") : DbgVal(mv)
+
+      tmp = Mv2Temperature(mv)
+      //update the variables in the library
+      tempMant = tmp
+      tempExp  = -1
+      //DbgMsg("\nTemperature=") : DbgVal(tmp)
+      if indwait == 0 then
+        if SendTempData() == 0 then
+          indwait = 1
+          DbgMsgVal("\nTemperature = ",tempMant)
+        endif
+      endif
+    endif
+  endif
+
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when data has arrived at the serial port
+'//==============================================================================
+function HandlerBlrAdvTimOut() as integer
+
+  '// Let the library deal with it first
+  OnBleAdvertTimeout()
+
+  '//DbgMsg("\n   - could use SystemStateSet(0) to switch off")
+
+  '//------------------------------------------------------------
+  '//  Switch off the system - requires a power cycle to recover
+  '//------------------------------------------------------------
+  '//  rc = SystemStateSet(0)
+  '//  AssertResCode(rc,"SecMngrKeySizes")
+
+  '//exit from waitevent
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when there is a BLE message
+'//==============================================================================
+function HandlerBleMsg(BYVAL nMsgId AS INTEGER, BYVAL nCtx AS INTEGER) as integer
+
+  '// Let the library deal with it first
+  onBleMsg(nMsgId,nCtx)
+
+  select nMsgId
+  case BLE_EVBLEMSGID_CONNECT
+
+  case BLE_EVBLEMSGID_DISCONNECT
+
+  case BLE_EVBLEMSGID_HTS_INDICATION_STATE
+    //if nCtx == 1 then
+      //Indications have been enabled
+    //endif
+
+  case BLE_EVBLEMSGID_HTS_INDICATION_CNF
+    // Can send next measurement data
+
+  case BLE_EVBLEMSGID_DISPLAY_PASSKEY
+    DbgMsgVal("Display Pairing Passkey ",nCtx)
+
+  case BLE_EVBLEMSGID_NEW_BOND
+    DbgMsg(" +++ New Bond")
+
+  case BLE_EVBLEMSGID_AUTH_KEY_REQUEST
+    DbgMsgVal(" +++ Auth Key Request, type=",nCtx)
+
+  case else
+    DbgMsg("Unknown Ble Msg" )
+  endselect
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when there is a APP message which was thrown using the
+'// SendMsgApp(msgId,msgCtx) function from within the library so that the library
+'// can inform the app that something has happened or needs doing
+'//==============================================================================
+function HandlerMsgApp(BYVAL nMsgId AS INTEGER, BYVAL nCtx AS INTEGER) as integer
+
+  //select nMsgId
+  //case 0
+  //case else
+  //  DbgMsgVal(" ??? Unknown App Msg",nMsgId )
+  //endselect
+
+endfunc 1
+
+'//******************************************************************************
+'// Equivalent to main() in C
+'//******************************************************************************
+
+'//------------------------------------------------------------------------------
+'// Enable synchronous event handlers
+'//------------------------------------------------------------------------------
+OnEvent  EVTMR0             call HandlerTimer0
+OnEvent  EVBLE_ADV_TIMEOUT  call HandlerBlrAdvTimOut
+OnEvent  EVBLEMSG           call HandlerBleMsg
+OnEvent  EVMSGAPP           call HandlerMsgApp
+
+'//------------------------------------------------------------------------------
+'// Initialise and then wait for events
+'//------------------------------------------------------------------------------
+
+sensLoc   = BLE_HTS_TEMP_TYPE_BODY   // see lib/ble.sblib for more defines
+
+ioCap     = BLE_IOCAPABILITY_NONE
+
+
+LibInit(ioCap, MIN_LTK_SIZE, MAX_LTK_SIZE, sensLoc, 100 ) //Initial battery level is 100%
+
+
+InitTempSensor()
+
+
+'// Finally start advertising - but you can comment this out and use the ad command
+'// over the uart user interface
+StartAdverts(ADV_IND)
+
+'//------------------------------------------------------------------------------
+'// Wait for a synchronous event.
+'// An application can have multiple <WaitEvent> statements
+'//------------------------------------------------------------------------------
+WaitEvent
+
+

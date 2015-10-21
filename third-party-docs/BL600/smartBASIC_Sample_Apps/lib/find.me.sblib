@@ -1,0 +1,284 @@
+'//******************************************************************************
+'// Laird Technologies (c) 2013
+'//
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'// ######                                                                #######
+'// ######        Library File meant to be #included in files             #######
+'// ######                                                                #######
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'//
+'// This library contains contains findme Profile and should be
+'// #included in your app.
+'//
+'//   Usage: (also see sample hrs.heart.rate.sb for more details)
+'//
+'//     (*) Call LibInit(...) from your code
+'//           If you want the battery service to be installed, then provide
+'//           a valid value in the range 0 to 100 for the btlvl parameter
+'//     (*) You can start/stop adverts using StartAdverts(..) and StopAdverts()
+'//     (*) To cater for passkey challenges during pairing, you need to handle
+'//           the BLE_EVBLEMSGID_AUTH_KEY_REQUEST and BLE_EVBLEMSGID_DISPLAY_PASSKEY
+'//           messages in the EVBLEMSG handler
+'//     (*) When you get BLE_EVBLEMSGID_DISPLAY_PASSKEY, you need to display the
+'//           passcode so that it can be entered in the peer device.
+'//     (*) To submit a passkey call the function SendPassKey() with an integer value
+'//     (*) When adverts timeout, you need to perform appropriate actions in the
+'//            handler HandlerBlrAdvTimOut in your app.
+'//
+'//
+'//******************************************************************************
+
+'//******************************************************************************
+'// Definitions
+'//******************************************************************************
+
+'//******************************************************************************
+'// Library Import
+'//******************************************************************************
+
+'//******************************************************************************
+'// Global Variable Declarations
+'//******************************************************************************
+
+dim i,j,k                   '//genreal purpose indexing variables
+dim adRpt$ as string        '//contains the most recent Advertise report
+dim scRpt$ as string        '//contains the most recent scan report
+dim stRsp$ as string        '//Uart rx data is stored here
+dim rc                      '//return code from function calls
+dim hConn                   '//connection handle
+dim ioCap                   '//pairing i/o capability
+dim batLevel                '//Battery level. If -1 then it battery service not exposed
+dim advUuid[6]              '//These are the uuid's that are exposed
+dim advUuidCnt              '//Uuid Counts for advert report
+
+'//******************************************************************************
+'// Initialisse Global Variable
+'//******************************************************************************
+hConn           = BLE_CONN_HANDLE_INVALID
+
+addr$           = ""
+batLevel        = -1
+
+'//Initialise the uuid array list with -1 which will be taken as item not to
+'//to be included in the advert report for the uuid AD element.
+for advUuidCnt=0 to 5
+  advUuid[advUuidCnt]=-1
+next
+advUuidCnt = 0
+
+'//******************************************************************************
+'// Function and Subroutine definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// Will add to array if there is space
+'//==============================================================================
+sub AddUuid(nUuid as integer)
+  if advUuidCnt < 5 then
+    advUuid[advUuidCnt]=nUuid
+    advUuidCnt = advUuidCnt + 1
+  endif
+endsub
+
+'//==============================================================================
+'// Register Error Handler as early as possible
+'//==============================================================================
+sub HandlerOnErr()
+    DbgMsgVal("\n OnErr - ",GetLastError())
+    DbgMsg(   "\n +++++++\n" )
+endsub
+onerror next HandlerOnErr
+
+'//==============================================================================
+'//==============================================================================
+sub InitSecManager(byval iocap as integer,mnLtk as integer, mxLtk as integer)
+
+  DbgMsg( "Initialise Security Manager" )
+
+  rc = BleSecMngrKeySizes(mnLtk,mxLtk)
+  AssertResCode(rc,"SecMngrKeySizes")
+
+  rc = BleSecMngrIocap(iocap)
+  AssertResCode(rc,"BleSecMngrIocap")
+
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub InitGapService()
+
+  DbgMsg("Initialise Gap Service")
+
+  rc = BleGapSvcInit(DEVICENAME,1,APPEARANCE,MIN_CONN_INTERVAL,MAX_CONN_INTERVAL,CONN_SUP_TIMEOUT,SLAVE_LATENCY)
+  AssertResCode(rc,"GapInit")
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub InitAdvReports()
+
+  adRpt$=""
+  scRpt$=""
+
+  DbgMsg("Initialise Advert Reports")
+
+  '//create a minimal advertise report
+  rc = BleAdvRptInit(adRpt$,DISCOVERY_MODE,ADV_APPEARANCE,MAX_DEVNAME_CHRS)
+  AssertResCode(rc,"RptInit")
+  DbgPrnAdvReport(adRpt$)
+
+  '//Append the uuid list to the advert report
+  rc = BleAdvRptAddUuid16(adRpt$,advUuid[0],advUuid[1],advUuid[2],advUuid[3],advUuid[4],advUuid[5])
+  AssertResCode(rc,"RptAddUuid16")
+  DbgPrnAdvReport(adRpt$)
+
+  '//commit the advert and scan report to the scan
+  rc = BleAdvRptsCommit(adRpt$,scRpt$)
+  AssertResCode(rc,"RptsCommit")
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub InitDisService()
+  dim mf$,md$,sy$,rl$
+
+  DbgMsg("Initialise Device Info Service")
+
+  mf$=MANF_NAME
+  md$=MODELSTR
+  rl$=REGLIST
+  sy$=SYSID
+  rc = BleSvcRegDevInfo(mf$,md$,SERIALNUM,HWREV,SWREV,sy$,rl$,PNPID)
+  AssertResCode(rc,"SvcReg DevInfo")
+  if rc==0 then
+     AddUuid(UUID_DEVICE_INFORMATION_SERVICE)
+  endif
+
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub InitServices(byval batlvl as integer)
+
+  DbgMsg("Initialise Services")
+
+  rc = BleSvcRegImmAlert()
+  AssertResCode(rc,"SvcReg Immediate Alert")
+  if rc==0 then
+     AddUuid(UUID_IMMEDIATE_ALERT_SERVICE)
+  endif
+
+  if (batlvl>=0) && (batlvl<=100) then
+    batLevel = batlvl
+    rc = BleSvcRegBattery(batLevel,BATT_NOTIFY)
+    AssertResCode(rc,"SvcReg Battery")
+    if rc==0 then
+       AddUuid(UUID_BATTERY_SERVICE)
+    endif
+  else
+    batLevel = -1
+  endif
+
+endsub
+
+'//==============================================================================
+'//==============================================================================
+function SetBattLevel(btLvl as integer) as integer
+  rc = BleSvcSetBattLevel(btLvl)
+  AssertResCode(rc,"SetBattLvl")
+endfunc rc
+
+'//==============================================================================
+'//==============================================================================
+function Disconnect() as integer
+  rc = BleDisconnect(hConn)
+  AssertResCode(rc,"Disconnect")
+endfunc rc
+
+'//==============================================================================
+'//==============================================================================
+sub SendPassKey(byval ky as integer)
+  DbgMsgVal( "Passkey : ",ky )
+  if hConn != BLE_CONN_HANDLE_INVALID then
+    rc = BleSecMngrPassKey(hConn,ky)
+    AssertResCode(rc,"BleSecMngrPassKey")
+  else
+    DbgMsg( "Not in connection" )
+  endif
+endsub
+
+
+'//==============================================================================
+'// MUST be called from the BLE Adverts timeout handler
+'//==============================================================================
+sub OnBleAdvertTimeout()
+
+  advState=0
+
+  DbgMsg("Advert stoped via timeout")
+
+endsub
+
+
+'//==============================================================================
+'// MUST be called from the BLE message handler
+'//==============================================================================
+sub OnBleMsg(BYVAL nMsgId AS INTEGER, BYVAL nCtx AS INTEGER)
+
+  select nMsgId
+  case BLE_EVBLEMSGID_CONNECT
+    advState=0
+    hConn=nCtx
+    DbgMsgVal("Ble Connection ",nCtx)
+
+  case BLE_EVBLEMSGID_DISCONNECT
+    DbgMsgVal("Ble Disonnection ",nCtx)
+    hConn = BLE_CONN_HANDLE_INVALID
+    '// restart advertising
+    StartFastAdverts()
+
+  case BLE_EVBLEMSGID_SERVICE_ERROR
+    print "\nService Error "; nCtx
+
+  case else
+    //Do nothing
+
+  endselect
+
+endsub
+
+
+'//==============================================================================
+'// MUST be called from the application initialisatin sequence.
+'//
+'// iocpb := one of BLE_IOCAPABILITY_xxxx defines in $.lib.ble.sb
+'// mnLtk := Minimum size of Long term Key in octets
+'// mxLtk := Maximum size of Long term Key in octets
+'// btLvl := If >=0 and <=100 then battery service is registered in gatt table and
+'//          the initial battery level is this
+'//==============================================================================
+sub LibInit(iocpb as integer, mnLtk as integer, mxLtk as integer, btLvl as integer )
+
+  InitGapService()
+  InitDisService()
+  InitSecManager(iocpb,mnLtk,mxLtk)
+  InitServices(btlvl)
+
+  // Finally setup and create the advert and scan reports
+  InitAdvReports()
+
+endsub
+
+
+
+'//******************************************************************************
+'// Handler definitions
+'//******************************************************************************
+
+
+'//******************************************************************************
+'// Other initialisations
+'//******************************************************************************
+
+
+

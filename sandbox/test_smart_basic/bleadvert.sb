@@ -1,0 +1,91 @@
+#define ADV_IND 0
+
+// Filter policies
+#define FP_DISABLE_WHITELIST 0
+
+// GAP settings
+#define DEV_NAME "AMDeSS Sensor"
+#define NAME_IS_WR 0                // name is writable
+#define APPEAR 0                    // unknown
+#define MIN_CON_INT 500000            // min connection interval (microseconds)
+#define MAX_CON_INT 1000000         // max connection interval (microseconds)
+#define SUPRV_TO 4000000
+#define SLAVE_LTCY 0
+
+dim res     // result of operations
+
+////
+//// Handle BLE Advertizing Timeout
+////
+function HandleBleAdvTimeout()
+    print "\nAdvert timed out."
+endfunc 0
+
+////
+//// Configure BLE GAP service
+////
+sub ConfigureGAP()
+    res = BleGapSvcInit(DEV_NAME, NAME_IS_WR, APPEAR, MIN_CON_INT, MAX_CON_INT, SUPRV_TO, SLAVE_LTCY)
+
+    if (res == 0) then
+        print "\nGAP service initialized successfully!"
+    else
+        print "\nBleGapSvcInit() returned a result of ", res
+    endif
+
+endsub
+
+////
+//// HandleBleMsg()
+///
+function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
+
+    print "\nmsgId: ", msgId
+
+endfunc 1
+
+////
+//// main()
+////
+
+dim peerAdr$
+dim advertInterval_ms
+dim advertTimeout_ms : advertTimeout_ms = 120 * 1000
+dim filterPolicy
+
+// ----------------------------
+// configure advertizing
+// ----------------------------
+// advertise every second
+advertInterval_ms = 1000
+filterPolicy = FP_DISABLE_WHITELIST
+
+print "\ngetting bond info..."
+
+dim addr$, extraInfo
+
+if BleBondMngrGetInfo(0, addr$, extraInfo)==0 then
+    print "\n\tMAC: ", addr$
+    print "\n\tExtra info: ", extraInfo
+else
+    print "\nUnable to get Bond info"
+endif
+
+print "\nCurrent device name: ", BleGetDeviceName$()
+
+// configure the GAP service
+ConfigureGAP()
+
+print "\nCurrent device name: ", BleGetDeviceName$()
+
+if BleAdvertStart(ADV_IND, peerAdr$, advertInterval_ms, advertTimeout_ms, filterPolicy) == 0 then
+    print "\nAdvert successful!"
+else
+    print "\nAdvert not successful."
+endif
+
+// set up event handlers
+onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
+onevent EVBLEMSG            call HandleBleMsg
+
+waitevent

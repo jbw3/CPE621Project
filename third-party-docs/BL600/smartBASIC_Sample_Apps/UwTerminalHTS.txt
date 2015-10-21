@@ -1,0 +1,10 @@
+send
+tm 364
+te -1
+dt 140D030E0B3812
+un 0
+un 1
+ad 0
+ad 1
+bl 86
+quit

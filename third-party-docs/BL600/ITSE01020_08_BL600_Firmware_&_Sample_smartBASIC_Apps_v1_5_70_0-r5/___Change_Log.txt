@@ -1,0 +1,25 @@
+*************************************
+Laird Technologies 2014
+
+BL600 Firmware
+*************************************
+
+1.5.70.0 r4
+   * Updated user manual
+   * Removed sample apps which used legacy api to create adopted services 
+   
+1.5.70.0 r3
+   * Updated the code snippet file GpioConfigPWM.sb
+   * Split the user manual into core and BL600 specific
+   * Bugfix: In htss.health.thermometer.sensor.custom.sb when there is a
+             disconnection the variable indwait is reset to 0
+
+1.5.70.0 r2
+   Missing file '$autorun$.iBeacon.sb' added to smartBASIC_Sample_Apps folder
+
+1.5.70.0 r1
+   Updated user manual
+   
+1.5.70.0 r0
+   New release (v6.0.0 softdevice / 5.2.0 SDK)
+   

@@ -1,0 +1,156 @@
+'//******************************************************************************
+'// Laird Technologies (c) 2013
+'//
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'// ######                                                                #######
+'// ######        Library File meant to be #included in files             #######
+'// ######                                                                #######
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'//
+'// This library contains contains a standard advert manager and should be
+'// #included in your app
+'//
+'//   Usage: (also see sample hrs.heart.rate.sb for more details)
+'//
+'//     (*) Call StartAdverts(...) from your code
+'//
+'//
+'//******************************************************************************
+
+'//******************************************************************************
+'// Definitions
+'//******************************************************************************
+
+'//******************************************************************************
+'// Library Import
+'//******************************************************************************
+
+'//******************************************************************************
+'// Global Variable Declarations
+'//******************************************************************************
+
+dim advState                '//will be 0 if not advertising, 1,2,3,4 for the four advert types
+dim advType                 '//as per ADV_ in ble.sblib
+dim addr$                   '//Peer address for Directed Adverts (MSB first) and exactly 6 bytes long
+dim advInt                  '//Adv interval in milliseconds
+dim advTmout                '//Adv timeout in milliseconds
+
+'//******************************************************************************
+'// Initialisse Global Variable
+'//******************************************************************************
+
+advState = 0
+advType  = ADV_IND
+addr$ = ""
+advInt   = ADV_INTERVAL_MS
+advTmout = ADV_TIMEOUT_MS
+
+'//******************************************************************************
+'// Function and Subroutine definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// returns 0 if parameters are acceptable
+'//==============================================================================
+function SetAdvertType(byval adType as integer,byref ad$ as string) as integer
+  if (adType>=ADV_IND)&&(adType<=ADV_NONCONN_IND) then
+    if (adType==ADV_DIRECT_IND) then
+      if (strlen(ad$)!=6)  then
+        exitfunc 0
+      endif
+      addr$=ad$
+    endif
+    advType = adType
+    exitfunc 1
+  endif
+endfunc 0
+
+'//==============================================================================
+'//==============================================================================
+sub StopAdverts()
+  dim rc
+
+  if advState != 0 then
+    DbgMsg( "Stop Adverts" )
+
+    rc = BleAdvertStop()
+    AssertResCode(rc,"AdvertStop")
+    if rc==0 then
+      advState=0
+    endif
+  endif
+
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub StartAdverts()
+  dim rc
+  if advState == 0 then
+    rc = BleAdvertStart(advType,addr$,advInt,advTmout,0)
+    AssertResCode(rc,"AdvertStart")
+    if rc==0 then
+      advState = advType + 1
+    endif
+  endif
+endsub
+
+'//==============================================================================
+'//==============================================================================
+function GetAdvertState() as integer
+endfunc advState
+
+'//==============================================================================
+'//==============================================================================
+function SetAdvertInt(intvl as integer) as integer
+  if intvl < 20 then
+    exitfunc 0
+  endif
+  if advType >= ADV_SCAN_IND then
+    if intvl < 100 then
+      exitfunc 0
+    endif
+  endif
+  advInt = intvl
+endfunc 1
+
+'//==============================================================================
+'//==============================================================================
+function SetAdvertTout(inttm as integer) as integer
+  if inttm < (advInt+20) then
+    exitfunc 0
+  endif
+  advTmout = inttm
+endfunc 1
+
+'//******************************************************************************
+'// Handler definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// This handler is called when an advertisment has timed out
+'//==============================================================================
+function HandlerBlrAdvTimOut() as integer
+
+  advState = 0
+
+  DbgMsg( "\nAdvert stoped via timeout" )
+  DbgMsg( "\n   - could use SystemStateSet(0) to switch off" )
+
+  '//------------------------------------------------------------
+  '//  Switch off the system - requires a power cycle to recover
+  '//------------------------------------------------------------
+  '//  rc = SystemStateSet(0)
+  '//  AssertResCode(rc,"SecMngrKeySizes")
+
+  '//exit from waitevent
+endfunc 1
+
+
+'//******************************************************************************
+'// Other initialisations
+'//******************************************************************************
+
+OnEvent  EVBLE_ADV_TIMEOUT  call HandlerBlrAdvTimOut
+
+

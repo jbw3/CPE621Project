@@ -1,0 +1,159 @@
+'//******************************************************************************
+'// Laird Technologies (c) 2013
+'//
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'// ######                                                                #######
+'// ######        Library File meant to be #included in files             #######
+'// ######                                                                #######
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'//
+'// This library contains contains a fast/slow advert manager and should be
+'// #included in your app - typically proximity and findme profles
+'//
+'//   Usage: (also see sample prx.proximity.sb for more details)
+'//
+'//     (*) Call StartFastAdverts(...) from your code
+'//
+'//
+'//******************************************************************************
+
+'//******************************************************************************
+'// Definitions
+'//******************************************************************************
+
+'//******************************************************************************
+'// Library Import
+'//******************************************************************************
+
+'//******************************************************************************
+'// Global Variable Declarations
+'//******************************************************************************
+
+dim advState                '//will be 0 if not advertising, 1 for fast and 2 for slow
+dim advType                 '//as per ADV_ in ble.sblib
+dim addr$                   '//Peer address for Directed Adverts (MSB first) and exactly 6 bytes long
+
+'//******************************************************************************
+'// Initialisse Global Variable
+'//******************************************************************************
+
+advState = 0
+advType  = ADV_IND
+addr$ = ""
+
+'//******************************************************************************
+'// Function and Subroutine definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// return 1 if succesfull or 0 for not
+'//==============================================================================
+function StartAdverts(intvl as integer, tmout as integer) as integer
+  dim rc
+  if advState == 0 then
+    rc = BleAdvertStart(advType,addr$,intvl,tmout,0)
+    AssertResCode(rc,"AdvertStart")
+    if rc==0 then
+      exitfunc 1
+    endif
+  endif
+endfunc 0
+
+
+'//==============================================================================
+'//==============================================================================
+sub StopAdverts()
+  dim rc
+
+  if advState != 0 then
+    DbgMsg( "Stop Adverts" )
+
+    rc = BleAdvertStop()
+    AssertResCode(rc,"AdvertStop")
+    if rc==0 then
+      advState=0
+    endif
+  endif
+
+endsub
+
+'//==============================================================================
+'// returns 0 if parameters are acceptable
+'//==============================================================================
+function SetAdvertType(byval adType as integer,byref ad$ as string) as integer
+  if (adType>=ADV_IND)&&(adType<=ADV_NONCONN_IND) then
+    if (adType==ADV_DIRECT_IND) then
+      if (strlen(ad$)!=6)  then
+        exitfunc 0
+      endif
+      addr$=ad$
+    endif
+    advType = adType
+    exitfunc 1
+  endif
+endfunc 0
+
+'//==============================================================================
+'//==============================================================================
+sub StartFastAdverts()
+  DbgMsg( "\nStart Fast Adverts" )
+  //StopAdverts()
+  if StartAdverts(25,30000) != 0 then
+    advState=1
+  endif
+endsub
+
+
+'//==============================================================================
+'//==============================================================================
+sub StartSlowAdverts()
+  DbgMsg( "\nStart Slow Adverts" )
+  //StopAdverts()
+  if StartAdverts(2000,30000) != 0 then
+    advState=2
+  endif
+endsub
+
+
+'//==============================================================================
+'//==============================================================================
+function GetAdvertState() as integer
+endfunc advState
+
+'//******************************************************************************
+'// Handler definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// This handler is called when an advertisment has timed out
+'//==============================================================================
+function HandlerBlrAdvTimOut() as integer
+
+
+  if advState == 1 then
+    advState = 0
+    StartSlowAdverts()
+  else
+    advState = 0
+
+    DbgMsg( "\nAdvert stoped via timeout" )
+    DbgMsg( "\n   - could use SystemStateSet(0) to switch off" )
+
+    '//------------------------------------------------------------
+    '//  Switch off the system - requires a power cycle to recover
+    '//------------------------------------------------------------
+    '//  rc = SystemStateSet(0)
+    '//  AssertResCode(rc,"SecMngrKeySizes")
+  endif
+
+  '//exit from waitevent
+endfunc 1
+
+
+'//******************************************************************************
+'// Other initialisations
+'//******************************************************************************
+
+OnEvent  EVBLE_ADV_TIMEOUT  call HandlerBlrAdvTimOut
+
+

@@ -1,0 +1,400 @@
+'//******************************************************************************
+'// Laird Technologies (c) 2013
+'//
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'// +++++                                                                      ++
+'// +++++  When UwTerminal downloads the app it will store it as a filenname   ++
+'// +++++  which consists of all characters up to the first . and excluding it ++
+'// +++++                                                                      ++
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'//
+'// Health Thermometer Profile
+'//
+'//   When you run the app you will get a > command prompt to allow you to submit
+'//   commands as follows:-
+'//
+'//     tm nnnn           - set temperature mantissa (decimal)
+'//     te nnnn           - set temperature exponant (decimal)
+'//     ky nnnn           - set pairing passcode (decimal)
+'//     un nnnn           - set units, 0 = centigrade, 1 = fahrenheit
+'//     dt yyyymmddhhmmss - set date/time stamp - exactly 14 hex characters long
+'//     ad n              - if n=0 then stop adverts otherwise start adverts if
+'//                            n=1 then ADV_IND
+'//                            n=2 then ADV_DIRECT_IND
+'//                            n=3 then ADV_SCAN_IND
+'//                            n=4 then ADV_NONCONN_IND
+'//     bl nn             - set battery level to nn %
+'//     ma nnnnn..nnn     - set mac address - 12 hex digits
+'//     discon            - disconnect
+'//     send              - send data to peer
+'//     quit              - quit app to command mode
+'//
+'//
+'// 13 Mar 2013
+'//    Created
+'//
+'//******************************************************************************
+
+'//******************************************************************************
+'// Definitions
+'//******************************************************************************
+
+#define DEVICENAME          "LAIRD_TS"
+#define APPEARANCE          BLE_APPEARANCE_GENERIC_THERMOMETER
+#define MANF_NAME           "Laird Technologies"
+#define MODELSTR            "BL600"
+#define SERIALNUM           "12345"
+#define HWREV               "HwRev1.0"
+#define SWREV               "SwRev1.0"
+#define SYSID               "\01\02\03\04\05\06\07\08"
+//#define SYSID               "@"
+//#define REGLIST             "\DE\AD\C0\DE"
+#define REGLIST             ""
+//#define PNPID               "\01\04\BF\03\20\00\01"
+#define PNPID               ""
+#define CHAR_CR             13
+
+
+        '// Minimum acceptable connection interval (0.5 seconds)
+#define MIN_CONN_INTERVAL                    500000
+        '// Maximum acceptable connection interval (1 second).
+#define MAX_CONN_INTERVAL                    1000000
+        '// Slave latency -- number of conn events that can be missed
+#define SLAVE_LATENCY                        0
+        '// Connection supervisory timeout (4 seconds) - max 32 seconds
+#define CONN_SUP_TIMEOUT                     4000000
+        '//DiscoverableMode, set to 0 for general mode, 1 for limited mode
+#define DISCOVERY_MODE                       0
+#define MAX_DEVNAME_CHRS                     10
+        '//Set Appearance advertise 0 to suppress
+#define ADV_APPEARANCE                       1
+        '//Advertise interval
+#define ADV_INTERVAL_MS                      100
+        '//Advertise timeout
+#define ADV_TIMEOUT_MS                       300000
+
+        '//Minimum long term key size in octets
+#define MIN_LTK_SIZE                         8
+        '//Maximum long term key size in octets
+#define MAX_LTK_SIZE                         16
+
+        '// Set this to non-zero to enable notiy on batt service
+#define BATT_NOTIFY                          0
+
+
+        '//Connection Update Negotiation paramters
+#define FIRST_CONN_PARAMS_UPDATE_DELAY       5000
+#define NEXT_CONN_PARAMS_UPDATE_DELAY        5000
+#define MAX_CONN_PARAMS_UPDATE_DELAY         15000
+
+'//******************************************************************************
+'// Debugging resource as early as possible
+'//******************************************************************************
+
+'//==============================================================================
+'//==============================================================================
+sub AssertResCode(rc,byval msg$ as string)
+  if(rc!=0)then
+    print msg$;" failed with ";integer.h' rc;"\n"
+  else
+    print msg$;" success\n"
+  endif
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub DbgMsg(byval msg$ as string)
+  print msg$;"\n"
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub DbgMsgVal(byval msg$ as string, byval vl as integer)
+  print msg$;" ";vl;"\n"
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub DbgPrnAdvReport(byref rp$ as string)
+  print "AdvRpt=";strhexize$(rp$);"\n"
+endsub
+
+
+'//******************************************************************************
+'// Library Import
+'//******************************************************************************
+#include "lib\health.thermometer.sblib"
+
+'//******************************************************************************
+'// Global Variable Declarations
+'//******************************************************************************
+
+dim ok$,er$
+dim msg$
+
+'//******************************************************************************
+'// Initialisse Global Variable
+'//******************************************************************************
+
+ok$    ="\nOK\r\n>"
+er$    ="\nERROR\r\n>"
+
+'//******************************************************************************
+'// Function and Subroutine definitions
+'//******************************************************************************
+
+'//==============================================================================
+'//==============================================================================
+sub UartRsp(rsp as integer)
+  if rsp == 0 then
+    rc = UartWrite(ok$)
+  else
+    rc = UartWrite(er$)
+  endif
+endsub
+
+'//==============================================================================
+'//==============================================================================
+sub UartMsg(byref msg$ as string)
+  rc = UartWrite(msg$)
+endsub
+
+
+'//==============================================================================
+'// Expecting to see XX=nnn\n\r  where nnn =1 to 2 digit decimal number
+'//==============================================================================
+function OnUartCmd(stData$,datalen) as integer
+  dim stRS$
+  dim vl$
+  dim vl
+  dim rsp
+  rsp=0  '//assume OK response
+  if datalen >= 4 then
+    stRS$ = strsplitleft$(stData$,3)
+    if     strcmp(stRS$,"tm ")==0 then  // temperature mantissa
+      tempMant = strvaldec(stData$)
+
+    elseif strcmp(stRS$,"te ")==0 then  // temperature exponant
+      tempExp = strvaldec(stData$)
+
+    elseif strcmp(stRS$,"bl ")==0 then
+      vl = strvaldec(stData$)
+      if SetBattLevel(vl) != 0 then
+        rsp = 1
+      endif
+
+    elseif strcmp(stRS$,"ky ")==0 then
+      vl = strvaldec(stData$)
+      SendPassKey(vl)
+
+    elseif strcmp(stRS$,"un ")==0 then
+      fUnits = strvaldec(stData$)
+
+    elseif strcmp(stRS$,"dt ")==0 then
+      dateTime$ = strdehexize$(stData$)
+      vl=strlen(dateTime$)
+      if (vl==0) || (vl==7) then
+        rsp = 0
+      else
+        rsp = 1
+      endif
+
+    elseif strcmp(stRS$,"ma ")==0 then
+      vl$ = strdehexize$(stData$)
+      vl=strlen(vl$)
+      if vl!=6 then
+        rsp = 1
+      else
+        addr$ = vl$
+      endif
+
+    elseif strcmp(stRS$,"ad ")==0 then
+      vl = strvaldec(stData$)
+      if vl==0 then
+        StopAdverts()
+      elseif (vl>=1) && (vl<=4) then
+        vl=vl-1
+        StartAdverts(vl)
+      else
+        rsp = 1
+      endif
+
+    elseif strcmp(stRS$,"dis")==0 then  //disconnect
+      if Disconnect() != 0 then
+        rsp = 1
+      endif
+
+    elseif strcmp(stRS$,"sen")==0 then
+      if indwait == 0 then
+        if SendTempData() == 0 then
+          indwait = 1
+        else
+         rsp = 1
+        endif
+      else
+        rsp = 1
+      endif
+
+    elseif strcmp(stRS$,"qui")==0 then
+      exitfunc 0
+
+    else
+      rsp = 1
+
+    endif
+
+  else
+    rsp = 1
+
+  endif
+
+  '// send a response back to the user
+  UartRsp(rsp)
+
+endfunc 1
+
+'//******************************************************************************
+'// Handler definitions
+'//******************************************************************************
+
+'//==============================================================================
+'// This handler is called when data has arrived at the serial port
+'//==============================================================================
+function HandlerBlrAdvTimOut() as integer
+
+  '// Let the library deal with it first
+  OnBleAdvertTimeout()
+
+  '//DbgMsg("\n   - could use SystemStateSet(0) to switch off")
+
+  '//------------------------------------------------------------
+  '//  Switch off the system - requires a power cycle to recover
+  '//------------------------------------------------------------
+  '//  rc = SystemStateSet(0)
+  '//  AssertResCode(rc,"SecMngrKeySizes")
+
+  '//exit from waitevent
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when there is a BLE message
+'//==============================================================================
+function HandlerBleMsg(BYVAL nMsgId AS INTEGER, BYVAL nCtx AS INTEGER) as integer
+
+  '// Let the library deal with it first
+  onBleMsg(nMsgId,nCtx)
+
+  select nMsgId
+  case BLE_EVBLEMSGID_CONNECT
+
+  case BLE_EVBLEMSGID_DISCONNECT
+
+  case BLE_EVBLEMSGID_HTS_INDICATION_STATE
+    //if nCtx == 1 then
+      //Indications have been enabled
+    //endif
+
+  case BLE_EVBLEMSGID_HTS_INDICATION_CNF
+    // Can send next measurement data
+
+  case BLE_EVBLEMSGID_DISPLAY_PASSKEY
+    DbgMsgVal("Display Pairing Passkey ",nCtx)
+
+  case BLE_EVBLEMSGID_NEW_BOND
+    DbgMsg(" +++ New Bond")
+
+  case BLE_EVBLEMSGID_AUTH_KEY_REQUEST
+    DbgMsgVal(" +++ Auth Key Request, type=",nCtx)
+
+  case else
+    DbgMsg("Unknown Ble Msg" )
+  endselect
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when TIMER 0 expires
+'//==============================================================================
+function HandlerTimer0() as integer
+  //Not used in this example
+  //To get this handler to be invoked you use TimerStart()
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when data has arrived at the serial port
+'//==============================================================================
+function HandlerUartRx() as integer
+  dim nMatch
+  dim stData$
+
+  nMatch=UartReadMatch(stRsp$,13)
+  if nMatch!=0 then
+    stData$ = strsplitleft$(stRsp$,nMatch)
+    exitfunc OnUartCmd(stData$,nMatch)
+  endif
+endfunc 1
+
+'//==============================================================================
+'// This handler is called when there is a APP message which was thrown using the
+'// SendMsgApp(msgId,msgCtx) function from within the library so that the library
+'// can inform the app that something has happened or needs doing
+'//==============================================================================
+function HandlerMsgApp(BYVAL nMsgId AS INTEGER, BYVAL nCtx AS INTEGER) as integer
+
+  //select nMsgId
+  //case 0
+  //case else
+  //  DbgMsgVal(" ??? Unknown App Msg",nMsgId )
+  //endselect
+
+endfunc 1
+
+'//******************************************************************************
+'// Equivalent to main() in C
+'//******************************************************************************
+
+'//------------------------------------------------------------------------------
+'// Enable synchronous event handlers
+'//------------------------------------------------------------------------------
+OnEvent  EVTMR0             call HandlerTimer0
+OnEvent  EVUARTRX           call HandlerUartRx
+OnEvent  EVBLE_ADV_TIMEOUT  call HandlerBlrAdvTimOut
+OnEvent  EVBLEMSG           call HandlerBleMsg
+OnEvent  EVMSGAPP           call HandlerMsgApp
+
+'//------------------------------------------------------------------------------
+'// Initialise and then wait for events
+'//------------------------------------------------------------------------------
+
+sensLoc   = BLE_HTS_TEMP_TYPE_BODY   // see lib/ble.sblib for more defines
+
+//ioCap     = BLE_IOCAPABILITY_NONE
+ioCap     = BLE_IOCAPABILITY_DISPLAY_ONLY
+//ioCap     = BLE_IOCAPABILITY_KEYBOARD_ONLY
+//ioCap     = BLE_IOCAPABILITY_DISPLAY_YESNO
+//ioCap     = BLE_IOCAPABILITY_KEYBOARD_DISPLAY
+
+
+LibInit(ioCap, MIN_LTK_SIZE, MAX_LTK_SIZE, sensLoc, 100 ) //Initial battery level is 100%
+
+'// Finally start advertising - but you can comment this out and use the ad command
+'// over the uart user interface
+StartAdverts(ADV_IND)
+
+'//Send user prompt for uart based command interface
+msg$="\n\r"
+UartMsg(msg$)
+msg$=DEVICENAME
+UartMsg(msg$)
+msg$="\n\r"
+UartMsg(msg$)
+
+'//Send an OK response
+UartRsp(0)
+
+'//------------------------------------------------------------------------------
+'// Wait for a synchronous event.
+'// An application can have multiple <WaitEvent> statements
+'//------------------------------------------------------------------------------
+WaitEvent
+
+

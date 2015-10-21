@@ -1,0 +1,9 @@
+send
+discon
+hr 72
+rr 12
+ad 1
+ad 0
+bl 89
+ma 00809814040F
+quit

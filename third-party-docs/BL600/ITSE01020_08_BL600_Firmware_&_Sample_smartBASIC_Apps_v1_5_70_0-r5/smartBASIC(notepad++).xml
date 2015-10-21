@@ -1,0 +1,413 @@
+<!--
+; --------------------------------------------------------------------------
+; Notepad++ keyword syntax file for SmartBasic
+; Laird Technologies 2013
+; --------------------------------------------------------------------------
+-->
+<NotepadPlus>
+    <UserLang name="smartBASIC" ext="sb sblib" udlVersion="2.1">
+        <Settings>
+            <Global caseIgnored="yes" allowFoldOfComments="no" foldCompact="no" forcePureLC="0" decimalSeparator="0" />
+            <Prefix Keywords1="no" Keywords2="no" Keywords3="no" Keywords4="no" Keywords5="yes" Keywords6="no" Keywords7="no" Keywords8="no" />
+        </Settings>
+        <KeywordLists>
+            <Keywords name="Comments">00// 00&apos; 01 02 03 04</Keywords>
+            <Keywords name="Numbers, prefix1"></Keywords>
+            <Keywords name="Numbers, prefix2"></Keywords>
+            <Keywords name="Numbers, extras1"></Keywords>
+            <Keywords name="Numbers, extras2"></Keywords>
+            <Keywords name="Numbers, suffix1"></Keywords>
+            <Keywords name="Numbers, suffix2"></Keywords>
+            <Keywords name="Numbers, range"></Keywords>
+            <Keywords name="Operators1">0 1 2 3 4 5 6 7 8 9 = , :</Keywords>
+            <Keywords name="Operators2"></Keywords>
+            <Keywords name="Folders in code1, open"></Keywords>
+            <Keywords name="Folders in code1, middle"></Keywords>
+            <Keywords name="Folders in code1, close"></Keywords>
+            <Keywords name="Folders in code2, open"></Keywords>
+            <Keywords name="Folders in code2, middle"></Keywords>
+            <Keywords name="Folders in code2, close"></Keywords>
+            <Keywords name="Folders in comment, open"></Keywords>
+            <Keywords name="Folders in comment, middle"></Keywords>
+            <Keywords name="Folders in comment, close"></Keywords>
+
+<!--
+;-------------------------------------------------------------------------------
+;                        DO NOT MANUALLY EDIT THIS FILE
+;
+;                         This file was auto generated
+;-------------------------------------------------------------------------------
+-->
+
+<!--
+; smartBASIC Core Tokens
+-->
+<Keywords name="Keywords1">
+#define
+#include
+integer.h
+integer.o
+integer.b
+AS
+BP
+DO
+IF
+TO
+DIM
+FOR
+SUB
+CALL
+CASE
+ELSE
+LONG
+NEXT
+REDO
+STEP
+STOP
+THEN
+BREAK
+BYREF
+BYVAL
+ENDIF
+PRINT
+ULONG
+UNTIL
+WHILE
+DOWNTO
+ELSEIF
+ENDSUB
+SELECT
+SPRINT
+STRING
+DISABLE
+DOWHILE
+ENDFUNC
+EXITSUB
+INTEGER
+ONERROR
+ONEVENT
+CONTINUE
+ENDWHILE
+EXITFUNC
+FUNCTION
+ENDSELECT
+WAITEVENT
+THROWEVENT
+ONFATALERROR
+</Keywords>
+
+<!--
+; smartBASIC Functions
+-->
+<Keywords name="Keywords2">
+STRLEN
+GETLASTERROR
+LEFT$
+RIGHT$
+MID$
+STRPOS
+MIN
+MAX
+ABS
+STRCMP
+STRVALDEC
+STRESCAPE$
+STRESCAPEEX$
+STRGETCHR
+STRSETCHR
+STRSETBLOCK
+TABLEINIT
+TABLEADD
+TABLELOOKUP
+NVRECORDGET
+NVRECORDGETEX
+NVRECORDSET
+STRFILL
+SYSINFO
+EXITCODE
+STRHEX2BIN
+STRSUM
+STRXOR
+STRHEXIZE$
+STRDEHEXIZE$
+STRSPLITLEFT$
+CIRCBUFCREATE
+CIRCBUFWRITE
+CIRCBUFOVERWRITE
+CIRCBUFREAD
+CIRCBUFITEMS
+SYSINFO$
+EXTRACTSTRTOKEN
+EXTRACTINTTOKEN
+TIMERRUNNING
+UARTOPEN
+UARTINFO
+UARTWRITE
+UARTREAD
+UARTREADN
+UARTREADMATCH
+UARTGETCTS
+UARTCLOSEEX
+FOPEN
+FSEEK
+FTELL
+FILELEN
+FREAD
+FREADUNTIL
+BLEGETDEVICENAME$
+BLEGAPSVCINIT
+BLEADVRPTINIT
+BLESCANRPTINIT
+BLESETCURCONNPARMS
+BLEGETCURCONNPARMS
+BLEATTRMETADATA
+BLECHARNEW
+BLECHARDESCUSERDESC
+BLECHARDESCPRSTNFRMT
+BLECHARDESCADD
+BLECHARCOMMIT
+BLESERVICENEW
+BLESERVICECOMMIT
+BLESVCADDINCLUDESVC
+BLECHARVALUEWRITE
+BLECHARVALUENOTIFY
+BLECHARVALUEINDICATE
+BLEADVRPTADDUUID128
+BLEGETADBYINDEX
+BLEGETADBYTAG
+BLEVSPOPEN
+BLEVSPINFO
+BLEVSPWRITE
+BLEVSPREAD
+BLEGATTCOPEN
+BLEDISCSERVICEFIRST
+BLEDISCSERVICENEXT
+BLEDISCCHARFIRST
+BLEDISCCHARNEXT
+BLEDISCDESCFIRST
+BLEDISCDESCNEXT
+BLEGATTCFINDCHAR
+BLEGATTCFINDDESC
+BLEGATTCREAD
+BLEGATTCREADDATA
+BLEGATTCWRITE
+BLEGATTCWRITECMD
+BLEGATTCNOTIFYREAD
+BLECONNECTCONFIG
+BLECONNECT
+BLECONNECTCANCEL
+BLESCANCONFIG
+BLESCANSTART
+BLESCANABORT
+BLESCANSTOP
+BLESCANGETADVREPORT
+BLESCANGETPAGERADDR
+BLEWHITELISTCREATE
+BLEWHITELISTADDADDR
+BLEWHITELISTADDIRK
+I2COPEN
+I2COPENEX
+I2CWRITEREAD
+I2CWRITEREG8
+I2CWRITEREG16
+I2CWRITEREG32
+I2CREADREG8
+I2CREADREG16
+I2CREADREG32
+SPIOPEN
+SPIREADWRITE
+SPIWRITE
+SPIREAD
+AESSETKEYIV
+AESENCRYPT
+AESDECRYPT
+GPIOCONFIGPWM
+BLEADVRPTADDUUID16
+BLEADVRPTSCOMMIT
+BLESVCREGDEVINFO
+BLECONNMNGRUPDCFG
+BLESECMNGRKEYSIZES
+BLESECMNGRIOCAP
+BLESECMNGRBONDREQ
+BLEADVRPTAPPENDAD
+SETPWRSUPPLYTHRESHMV
+BLEADVERTSTART
+BLEADVERTSTOP
+SYSTEMSTATESET
+GPIOSETFUNC
+GPIOREAD
+GPIOBINDEVENT
+GPIOUNBINDEVENT
+GPIOASSIGNEVENT
+GPIOUNASSIGNEVENT
+BLEAUTHENTICATE
+BLETXPOWERSET
+BLETXPWRWHILEPAIRING
+READPWRSUPPLYMV
+BLESECMNGRPASSKEY
+BLEDISCONNECT
+BLEBONDMNGRGETINFO
+BLEADVRPTGETSPACE
+BLESVCCOMMIT
+ERASEFILESYSTEM
+BLESVCREGBATTERY
+BLESVCREGHEARTRATE
+BLESVCSETBATTLEVEL
+BLESVCSETHEARTRATE
+BLESVCREGTHERM
+BLESVCSETTHERM
+BLESVCREGTXPOWER
+BLESVCREGIMMALERT
+BLESVCGETIMMALERT
+BLESVCREGLINKLOSS
+BLESVCGETLLOSSALERT
+BLESVCREGBLOODPRESS
+BLESVCSETBLOODPRESS
+BLESVCADDHEARTRATERR
+SENDMSGAPP
+VERBOSEERR$
+RAND
+RANDEX
+GETTICKCOUNT
+GETTICKSINCE
+NVCFGKEYGET
+NVCFGKEYSET
+BLECHARVALUEREAD
+BLECHARDESCREAD
+BLEENCODE8
+BLEDECODES8
+BLEDECODEU8
+BLEENCODE16
+BLEDECODES16
+BLEDECODEU16
+BLEENCODE24
+BLEDECODES24
+BLEDECODEU24
+BLEENCODE32
+BLEDECODE32
+BLEENCODEFLOAT
+BLEDECODEFLOAT
+BLEENCODESFLOAT
+BLEENCODESFLOATEX
+BLEDECODESFLOAT
+BLEENCODETIMESTAMP
+BLEDECODETIMESTAMP
+BLEENCODEBITS
+BLEDECODEBITS
+BLEENCODESTRING
+BLEDECODESTRING
+BLEHANDLEUUID16
+BLEHANDLEUUID128
+BLEHANDLEUUIDSIBLING
+</Keywords>
+
+<!--
+; smartBASIC Subroutines
+-->
+<Keywords name="Keywords3">
+RESETLASTERROR
+STRDEESCAPE
+STRSHIFTLEFT
+CIRCBUFDESTROY
+TIMERSTART
+TIMERCANCEL
+UARTCLOSE
+UARTSETRTS
+UARTBREAK
+UARTFLUSH
+FCLOSE
+BLEVSPCLOSE
+BLEVSPFLUSH
+BLEVSPUARTBRIDGE
+BLEGATTCCLOSE
+BLEWHITELISTDESTROY
+I2CCLOSE
+SPICLOSE
+GPIOWRITE
+RESET
+BLECONFIGDCDC
+BLEBONDMNGRERASE
+RANDSEED
+</Keywords>
+
+<!--
+; smartBASIC Event and Message IDs
+-->
+<Keywords name="Keywords4">
+EVTMR0
+EVTMR1
+EVTMR2
+EVTMR3
+EVTMR4
+EVTMR5
+EVTMR6
+EVTMR7
+EVVSPRX
+EVUARTRX
+EVGPIOCHAN0
+EVGPIOCHAN1
+EVGPIOCHAN2
+EVGPIOCHAN3
+EVNOTIFYBUF
+EVATTRNOTIFY
+EVVSPTXEMPTY
+EVDETECTCHAN0
+EVUARTTXEMPTY
+EVBLE_ADV_REPORT
+EVBLE_FAST_PAGED
+EVBLE_ADV_TIMEOUT
+EVBLE_CONN_TIMEOUT
+EVBLE_SCAN_TIMEOUT
+EVBLEMSG
+EVDISCON
+EVMSGAPP
+EVCHARHVC
+EVCHARVAL
+EVATTRREAD
+EVCHARCCCD
+EVCHARDESC
+EVCHARSCCD
+EVDISCCHAR
+EVDISCDESC
+EVFINDCHAR
+EVFINDDESC
+EVATTRWRITE
+EVGATTCTOUT
+EVDISCPRIMSVC
+</Keywords>
+            <Keywords name="Keywords5">A B C D E F G H I J K L M N O P Q R S T U V W X Y Z a b c d e f g h i j k l m n o p q r s t u v w x y z ? ! &apos; , . &lt; &gt; / + - _ * &amp; ^ % $ &#x00A3; &quot; ` \ | </Keywords>
+
+            <Keywords name="Keywords6"></Keywords>
+            <Keywords name="Keywords7"></Keywords>
+            <Keywords name="Keywords8"></Keywords>
+            <Keywords name="Delimiters">00&quot; 01 02&quot; 03( 04 05) 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23</Keywords>
+        </KeywordLists>
+        <Styles>
+            <WordsStyle name="DEFAULT" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="COMMENTS" fgColor="808080" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="LINE COMMENTS" fgColor="008000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="NUMBERS" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS1" fgColor="0000FF" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS2" fgColor="800080" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS3" fgColor="000080" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS4" fgColor="000080" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS5" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS6" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS7" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="KEYWORDS8" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="OPERATORS" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="FOLDER IN CODE1" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="FOLDER IN CODE2" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="FOLDER IN COMMENT" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS1" fgColor="008080" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS2" fgColor="FF0000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="117702655" />
+            <WordsStyle name="DELIMITERS3" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS4" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS5" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS6" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS7" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+            <WordsStyle name="DELIMITERS8" fgColor="000000" bgColor="FFFFFF" fontName="" fontStyle="0" nesting="0" />
+        </Styles>
+    </UserLang>
+</NotepadPlus>
+

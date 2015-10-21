@@ -1,0 +1,10 @@
+send
+sp 120
+dp 80
+mp 100
+pr 98
+ms 1
+dt 140D030E0B3812
+ad 1
+ad 0
+quit

@@ -1,0 +1,154 @@
+'//******************************************************************************
+'// Laird Technologies (c) 2013
+'//
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'// ######                                                                #######
+'// ######        Library File meant to be #included in files             #######
+'// ######                                                                #######
+'// +++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+'//
+'// This library contains all the BLE related #defines that will make your app
+'// more readable
+'//
+'//******************************************************************************
+
+'//******************************************************************************
+'// Library Import
+'//******************************************************************************
+
+'//******************************************************************************
+'// Definitions
+'//******************************************************************************
+
+#define BLE_CONN_HANDLE_INVALID                             0xFFFF
+
+#define BLE_APPEARANCE_UNKNOWN                              0
+#define BLE_APPEARANCE_GENERIC_PHONE                        64
+#define BLE_APPEARANCE_GENERIC_COMPUTER                     128
+#define BLE_APPEARANCE_GENERIC_WATCH                        192
+#define BLE_APPEARANCE_WATCH_SPORTS_WATCH                   193
+#define BLE_APPEARANCE_GENERIC_CLOCK                        256
+#define BLE_APPEARANCE_GENERIC_DISPLAY                      320
+#define BLE_APPEARANCE_GENERIC_REMOTE_CONTROL               384
+#define BLE_APPEARANCE_GENERIC_EYE_GLASSES                  448
+#define BLE_APPEARANCE_GENERIC_TAG                          512
+#define BLE_APPEARANCE_GENERIC_KEYRING                      576
+#define BLE_APPEARANCE_GENERIC_MEDIA_PLAYER                 640
+#define BLE_APPEARANCE_GENERIC_BARCODE_SCANNER              704
+#define BLE_APPEARANCE_GENERIC_THERMOMETER                  768
+#define BLE_APPEARANCE_THERMOMETER_EAR                      769
+#define BLE_APPEARANCE_GENERIC_HEART_RATE_SENSOR            832
+#define BLE_APPEARANCE_HEART_RATE_SENSOR_HEART_RATE_BELT    833
+#define BLE_APPEARANCE_GENERIC_BLOOD_PRESSURE               896
+#define BLE_APPEARANCE_BLOOD_PRESSURE_ARM                   897
+#define BLE_APPEARANCE_BLOOD_PRESSURE_WRIST                 898
+#define BLE_APPEARANCE_HUMAN_INTERFACE_DEVICE_HID_GENERIC   960
+#define BLE_APPEARANCE_KEYBOARD_HID_SUBTYPE                 961
+#define BLE_APPEARANCE_MOUSE_HID_SUBTYPE                    962
+#define BLE_APPEARANCE_JOYSTICK_HID_SUBTYPE                 963
+#define BLE_APPEARANCE_GAMEPAD_HID_SUBTYPE                  964
+#define BLE_APPEARANCE_DIGITIZER_TABLET_HID_SUBTYPE         965
+#define BLE_APPEARANCE_CARD_READER_HID_SUBTYPE              966
+#define BLE_APPEARANCE_DIGITAL_PEN_HID_SUBTYPE              967
+#define BLE_APPEARANCE_BARCODE_SCANNER_HID_SUBTYPE          968
+#define BLE_APPEARANCE_GENERIC_GLUCOSE_METER                968
+
+#define UUID_ALERT_NOTIFICATION_SERVICE                 0x1811
+#define UUID_BATTERY_SERVICE                            0x180F
+#define UUID_BLOOD_PRESSURE_SERVICE                     0x1810
+#define UUID_CURRENT_TIME_SERVICE                       0x1805
+#define UUID_DEVICE_INFORMATION_SERVICE                 0x180A
+#define UUID_GLUCOSE_SERVICE                            0x1808
+#define UUID_HEALTH_THERMOMETER_SERVICE                 0x1809
+#define UUID_HEART_RATE_SERVICE                         0x180D
+#define UUID_HUMAN_INTERFACE_DEVICE_SERVICE             0x1812
+#define UUID_IMMEDIATE_ALERT_SERVICE                    0x1802
+#define UUID_LINK_LOSS_SERVICE                          0x1803
+#define UUID_NEXT_DST_CHANGE_SERVICE                    0x1807
+#define UUID_PHONE_ALERT_STATUS_SERVICE                 0x180E
+#define UUID_REFERENCE_TIME_UPDATE_SERVICE              0x1806
+#define UUID_SCAN_PARAMETERS_SERVICE                    0x1813
+#define UUID_TX_POWER_SERVICE                           0x1804
+
+'// Body Sensor Location values
+#define BLE_HRS_BODY_SENSOR_LOCATION_OTHER              0
+#define BLE_HRS_BODY_SENSOR_LOCATION_CHEST              1
+#define BLE_HRS_BODY_SENSOR_LOCATION_WRIST              2
+#define BLE_HRS_BODY_SENSOR_LOCATION_FINGER             3
+#define BLE_HRS_BODY_SENSOR_LOCATION_HAND               4
+#define BLE_HRS_BODY_SENSOR_LOCATION_EAR_LOBE           5
+#define BLE_HRS_BODY_SENSOR_LOCATION_FOOT               6
+
+'// types of advert packets
+#define ADV_IND                                         0
+#define ADV_DIRECT_IND                                  1
+#define ADV_SCAN_IND                                    2
+#define ADV_NONCONN_IND                                 3
+
+
+'//BLE EVENT MSG IDs
+#define BLE_EVBLEMSGID_CONNECT                          0
+#define BLE_EVBLEMSGID_DISCONNECT                       1
+#define BLE_EVBLEMSGID_IMMEDIATE_ALERT_SERVICE_ALERT    2
+#define BLE_EVBLEMSGID_LINKLOSS_SERVICE_ALERT           3
+#define BLE_EVBLEMSGID_SERVICE_ERROR                    4
+#define BLE_EVBLEMSGID_HTS_INDICATION_STATE             5
+#define BLE_EVBLEMSGID_HTS_INDICATION_CNF               6
+#define BLE_EVBLEMSGID_BPS_INDICATION_STATE             7
+#define BLE_EVBLEMSGID_BPS_INDICATION_CNF               8
+#define BLE_EVBLEMSGID_DISPLAY_PASSKEY                  9
+#define BLE_EVBLEMSGID_NEW_BOND                        10
+#define BLE_EVBLEMSGID_AUTH_KEY_REQUEST                11
+#define BLE_EVBLEMSGID_HRS_NOTIFICATION_STATE          12
+
+'//BLE Alert Levels
+#define BLE_ALERT_LEVEL_NO_ALERT                        0
+#define BLE_ALERT_LEVEL_MILD_ALERT                      1
+#define BLE_ALERT_LEVEL_HIGH_ALERT                      2
+
+
+//Blood Pressure Feature Bits
+#define BLE_BPS_FEATURE_BODY_MOVEMENT_BIT               1
+#define BLE_BPS_FEATURE_CUFF_FIT_BIT                    2
+#define BLE_BPS_FEATURE_IRREGULAR_PULSE_BIT             4
+#define BLE_BPS_FEATURE_PULSE_RATE_RANGE_BIT            8
+#define BLE_BPS_FEATURE_MEASUREMENT_POSITION_BIT        16
+#define BLE_BPS_FEATURE_MULTIPLE_BOND_BIT               32
+
+//Pairing i/o capability
+#define BLE_IOCAPABILITY_NONE                           0
+#define BLE_IOCAPABILITY_DISPLAY_YESNO                  1
+#define BLE_IOCAPABILITY_KEYBOARD_ONLY                  2
+#define BLE_IOCAPABILITY_DISPLAY_ONLY                   3
+#define BLE_IOCAPABILITY_KEYBOARD_DISPLAY               4
+#define BLE_IOCAPABILITY_ILLEGAL                        5
+
+
+// health thermometer sensor location
+#define BLE_HTS_TEMP_TYPE_ARMPIT                        1
+#define BLE_HTS_TEMP_TYPE_BODY                          2
+#define BLE_HTS_TEMP_TYPE_EAR                           3
+#define BLE_HTS_TEMP_TYPE_FINGER                        4
+#define BLE_HTS_TEMP_TYPE_GI_TRACT                      5
+#define BLE_HTS_TEMP_TYPE_MOUTH                         6
+#define BLE_HTS_TEMP_TYPE_RECTUM                        7
+#define BLE_HTS_TEMP_TYPE_TOE                           8
+#define BLE_HTS_TEMP_TYPE_EAR_DRUM                      9
+
+
+'//******************************************************************************
+'// Global Variable Declarations
+'//******************************************************************************
+
+'//******************************************************************************
+'// Function and Subroutine definitions
+'//******************************************************************************
+
+'//******************************************************************************
+'// Handler definitions
+'//******************************************************************************
+
+'//******************************************************************************
+'// Equivalent to main() in C
+'//******************************************************************************
+
