@@ -6,8 +6,8 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
-import android.os.IBinder;
-import android.support.annotation.Nullable;
+import android.os.*;
+import android.os.Process;
 import android.util.Log;
 
 public class BluetoothLeService extends Service
@@ -31,6 +31,8 @@ public class BluetoothLeService extends Service
 
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
+
+    // ------ GATT Callback ------
 
     private final BluetoothGattCallback mGattCallback =
             new BluetoothGattCallback()
@@ -107,11 +109,53 @@ public class BluetoothLeService extends Service
                 }
             };
 
+    // ------ Service Handler ------
 
-    @Nullable
+    private class ServiceHandler extends Handler
+    {
+        ServiceHandler(Looper looper)
+        {
+            super(looper);
+        }
+
+        @Override
+        public void handleMessage(Message msg)
+        {
+            Log.d("service", "handleMessage");
+        }
+    }
+
+    private Looper serviceLooper;
+    private ServiceHandler serviceHandler;
+
+    @Override
+    public void onCreate()
+    {
+        super.onCreate();
+
+        HandlerThread thread = new HandlerThread("BluetoothLeThread", Process.THREAD_PRIORITY_BACKGROUND);
+        thread.start();
+
+        serviceLooper = thread.getLooper();
+        serviceHandler = new ServiceHandler(serviceLooper);
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId)
+    {
+        return super.onStartCommand(intent, flags, startId);
+    }
+
     @Override
     public IBinder onBind(Intent intent)
     {
+        // this service does not bind so return null
         return null;
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        Log.d("service", "onDestroy");
     }
 }

@@ -7,6 +7,8 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeScanner;
+import android.bluetooth.le.ScanCallback;
+import android.bluetooth.le.ScanResult;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
@@ -28,9 +30,44 @@ public class MainActivity extends AppCompatActivity
     private static final long SCAN_PERIOD = 8000; // ms
 
     private TextView btoothTextView;
+    private Button scanButton;
     private BluetoothAdapter btAdapter;
+    BluetoothLeScanner bluetoothLeScanner;
     private Handler btScanHandler;
     private BluetoothGatt btoothGatt;
+    private BtScanCallback btScanCallback = new BtScanCallback();
+
+    private class BtScanCallback extends ScanCallback
+    {
+        @Override
+        public void onScanResult(int callbackType, ScanResult result)
+        {
+            Log.d("Bluetooth", "onScanResult");
+
+            BluetoothDevice device = result.getDevice();
+            String name = device.getName();
+            if (name == null)
+            {
+                name = "None";
+            }
+            String str = String.format("Name: %s,\nAddress: %s", name, device.getAddress());
+
+            Log.d("Bluetooth", str);
+            if (!devices.contains(str))
+            {
+                devices.add(str);
+                devicesAdapter.notifyDataSetChanged();
+
+                /// @todo bond with device
+            }
+        }
+
+        @Override
+        public void onScanFailed(int errorCode)
+        {
+            Log.d("Bluetooth", "onScanFailed");
+        }
+    }
 
     private AdvertiseCallback advertiseCallback =
             new AdvertiseCallback()
@@ -119,7 +156,7 @@ public class MainActivity extends AppCompatActivity
         listView.setAdapter(devicesAdapter);
 
         btoothTextView = (TextView) findViewById(R.id.bluetoothstatus);
-        Button scanButton = (Button) findViewById(R.id.btButton);
+        scanButton = (Button) findViewById(R.id.btButton);
 
         btScanHandler = new Handler();
 
@@ -129,10 +166,13 @@ public class MainActivity extends AppCompatActivity
         {
             btoothTextView.setText("Bluetooth is not supported on this device");
             scanButton.setEnabled(false);
+            bluetoothLeScanner = null;
         }
         else
         {
             btoothTextView.setText("Bluetooth is supported on this device");
+            scanButton.setEnabled(true);
+            bluetoothLeScanner = btAdapter.getBluetoothLeScanner();
         }
     }
 
@@ -175,7 +215,8 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
+        if (id == R.id.action_settings)
+        {
             return true;
         }
 
@@ -186,26 +227,26 @@ public class MainActivity extends AppCompatActivity
     {
         Log.d("Bluetooth", "scanning...");
 
+        scanButton.setEnabled(false);
+
+        bluetoothLeScanner = btAdapter.getBluetoothLeScanner();
+
         devices.clear();
         devicesAdapter.notifyDataSetChanged();
 
         // stop the scan after the specified period
         btScanHandler.postDelayed(
-                new Runnable() {
+                new Runnable()
+                {
                     @Override
-                    public void run() {
-                        btAdapter.stopLeScan(leScanCallback);
+                    public void run()
+                    {
+                        bluetoothLeScanner.stopScan(btScanCallback);
+                        scanButton.setEnabled(true);
                     }
                 }, SCAN_PERIOD);
 
         // start the scan
-        btAdapter.startLeScan(leScanCallback);
-    }
-
-    public void onBluetoothAdvertise(View v)
-    {
-        Log.d("onBluetoothAdvertise", "Advertising...");
-
-
+        bluetoothLeScanner.startScan(btScanCallback);
     }
 }
