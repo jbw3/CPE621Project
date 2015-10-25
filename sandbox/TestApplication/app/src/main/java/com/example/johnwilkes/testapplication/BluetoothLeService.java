@@ -32,13 +32,6 @@ public class BluetoothLeService extends Service
     private BluetoothGatt mBluetoothGatt;
     private int mConnectionState = STATE_DISCONNECTED;
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent)
-    {
-        return null;
-    }
-
     private final BluetoothGattCallback mGattCallback =
             new BluetoothGattCallback()
             {
@@ -113,4 +106,12 @@ public class BluetoothLeService extends Service
                     sendBroadcast(intent);
                 }
             };
+
+
+    @Nullable
+    @Override
+    public IBinder onBind(Intent intent)
+    {
+        return null;
+    }
 }

@@ -4,6 +4,8 @@ import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.content.Intent;
 import android.os.Bundle;
@@ -25,12 +27,28 @@ public class MainActivity extends AppCompatActivity
     private static final int REQUEST_ENABLE_BT = 0xB;
     private static final long SCAN_PERIOD = 8000; // ms
 
-    private TextView textView;
     private TextView btoothTextView;
-    private int numClicks;
     private BluetoothAdapter btAdapter;
     private Handler btScanHandler;
     private BluetoothGatt btoothGatt;
+
+    private AdvertiseCallback advertiseCallback =
+            new AdvertiseCallback()
+            {
+                @Override
+                public void onStartSuccess(AdvertiseSettings settingsInEffect)
+                {
+                    Log.d("onStartSuccess", "success");
+                    super.onStartSuccess(settingsInEffect);
+                }
+
+                @Override
+                public void onStartFailure(int errorCode)
+                {
+                    Log.d("onStartFailure", "failure");
+                    super.onStartFailure(errorCode);
+                }
+            };
 
     private ArrayList<String> devices;
     private ArrayAdapter<String> devicesAdapter;
@@ -100,13 +118,10 @@ public class MainActivity extends AppCompatActivity
         devicesAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, devices);
         listView.setAdapter(devicesAdapter);
 
-        textView = (TextView) findViewById(R.id.textView);
         btoothTextView = (TextView) findViewById(R.id.bluetoothstatus);
         Button scanButton = (Button) findViewById(R.id.btButton);
 
         btScanHandler = new Handler();
-
-        numClicks = 0;
 
         // check for Bluetooth support
         btAdapter = BluetoothAdapter.getDefaultAdapter();
@@ -167,15 +182,6 @@ public class MainActivity extends AppCompatActivity
         return super.onOptionsItemSelected(item);
     }
 
-    public void onButtonClick(View v)
-    {
-        ++numClicks;
-        textView.setText(String.format("The button was pressed %d time%s", numClicks, (numClicks != 1) ? "s" : ""));
-
-//        devices.add(String.format("click %d", numClicks));
-//        devicesAdapter.notifyDataSetChanged();
-    }
-
     public void onBluetoothScan(View v)
     {
         Log.d("Bluetooth", "scanning...");
@@ -194,5 +200,12 @@ public class MainActivity extends AppCompatActivity
 
         // start the scan
         btAdapter.startLeScan(leScanCallback);
+    }
+
+    public void onBluetoothAdvertise(View v)
+    {
+        Log.d("onBluetoothAdvertise", "Advertising...");
+
+
     }
 }
