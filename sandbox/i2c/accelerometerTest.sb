@@ -1,0 +1,54 @@
+#define clock_hz 100000
+
+// MMA8653FC Constants
+#define MMA8653FC_Address 0x01D
+#define MMA8653FC_CTRL_REG1 0x2A
+#define MMA8653FC_WHO_AM_I 0x0D
+
+///
+/// TestI2C
+///
+sub TestI2C()
+
+dim rc
+dim ctrlReg1
+
+print "\nMMA8653FC_Address: 0x", INTEGER.H'MMA8653FC_Address
+print "\nCTRL_REG1 Address: 0x", INTEGER.H'MMA8653FC_CTRL_REG1
+
+ctrlReg1 = 0
+
+// read CTRL_REG1
+rc = i2cReadReg8(MMA8653FC_Address, MMA8653FC_CTRL_REG1, ctrlReg1)
+
+print "\nctrlReg1: 0x", INTEGER.H'ctrlReg1
+
+if rc != 0 then
+    print "\nError reading CTRL_REG1 from accelerometer"
+    print "\n", "Return code: 0x", INTEGER.H'rc
+else
+    print "\nCTRL_REG1 value: 0x", INTEGER.H'ctrlReg1
+endif
+
+endsub
+
+///
+/// main()
+///
+dim rc
+dim i2cHandle
+
+// try to open i2c to accelerometer
+rc = i2cOpen(clock_hz, 0, i2cHandle)
+
+if rc != 0 then
+    print "\nUnable to open I2C port. Return code is: 0x", INTEGER.H'rc
+else
+    print "\nOpened I2C port successfully!"
+    TestI2C()
+endif
+
+// ok to close i2c even if not opened successfully
+i2cClose(i2cHandle)
+
+print "\nClosed I2C port"
