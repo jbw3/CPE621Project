@@ -1,13 +1,13 @@
 package com.example.johnwilkes.testapplication;
 
 import android.app.Service;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.os.*;
-import android.os.Process;
 import android.util.Log;
 
 public class BluetoothLeService extends Service
@@ -109,35 +109,21 @@ public class BluetoothLeService extends Service
                 }
             };
 
-    // ------ Service Handler ------
-
-    private class ServiceHandler extends Handler
+    // ------ Binder ------
+    public class BleBinder extends Binder
     {
-        ServiceHandler(Looper looper)
+        public void connect(BluetoothDevice device)
         {
-            super(looper);
-        }
-
-        @Override
-        public void handleMessage(Message msg)
-        {
-            Log.d("service", "handleMessage");
+            Log.d("BleBinder.connect", device.getName());
         }
     }
 
-    private Looper serviceLooper;
-    private ServiceHandler serviceHandler;
+    BleBinder bleBinder = new BleBinder();
 
     @Override
     public void onCreate()
     {
         super.onCreate();
-
-        HandlerThread thread = new HandlerThread("BluetoothLeThread", Process.THREAD_PRIORITY_BACKGROUND);
-        thread.start();
-
-        serviceLooper = thread.getLooper();
-        serviceHandler = new ServiceHandler(serviceLooper);
     }
 
     @Override
@@ -149,8 +135,7 @@ public class BluetoothLeService extends Service
     @Override
     public IBinder onBind(Intent intent)
     {
-        // this service does not bind so return null
-        return null;
+        return bleBinder;
     }
 
     @Override

@@ -9,9 +9,13 @@ import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -34,8 +38,8 @@ public class MainActivity extends AppCompatActivity
     private BluetoothAdapter btAdapter;
     BluetoothLeScanner bluetoothLeScanner;
     private Handler btScanHandler;
-    private BluetoothGatt btoothGatt;
     private BtScanCallback btScanCallback = new BtScanCallback();
+    private BluetoothLeService bleService;
 
     private class BtScanCallback extends ScanCallback
     {
@@ -144,6 +148,21 @@ public class MainActivity extends AppCompatActivity
                 }
             };
 
+    private ServiceConnection connection = new ServiceConnection()
+    {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service)
+        {
+            BluetoothLeService.BleBinder binder = (BluetoothLeService.BleBinder) service;
+            Log.d("onServiceConnected", "bound");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name)
+        {
+        }
+    };
+
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
@@ -195,7 +214,18 @@ public class MainActivity extends AppCompatActivity
             {
                 Log.d("onStart", String.format("Name: %s, Address: %s", device.getName(), device.getAddress()));
             }
+
+            Intent intent = new Intent(this, BluetoothLeService.class);
+            bindService(intent, connection, Context.BIND_AUTO_CREATE);
         }
+    }
+
+    @Override
+    protected void onStop()
+    {
+        super.onStop();
+
+        unbindService(connection);
     }
 
     @Override
