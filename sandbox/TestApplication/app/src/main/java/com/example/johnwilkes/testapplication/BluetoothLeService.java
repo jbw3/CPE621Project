@@ -29,12 +29,12 @@ public class BluetoothLeService extends Service
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
 
-    private BluetoothGatt mBluetoothGatt;
+    private BluetoothGatt bluetoothGatt = null;
     private int mConnectionState = STATE_DISCONNECTED;
 
     // ------ GATT Callback ------
 
-    private final BluetoothGattCallback mGattCallback =
+    private final BluetoothGattCallback gattCallback =
             new BluetoothGattCallback()
             {
                 @Override
@@ -48,7 +48,7 @@ public class BluetoothLeService extends Service
                         broadcastUpdate(intentAction);
                         Log.i(TAG, "Connected to GATT server.");
                         Log.i(TAG, "Attempting to start service discovery:" +
-                                mBluetoothGatt.discoverServices());
+                                bluetoothGatt.discoverServices());
                     }
                     else if (newState == BluetoothProfile.STATE_DISCONNECTED)
                     {
@@ -115,6 +115,8 @@ public class BluetoothLeService extends Service
         public void connect(BluetoothDevice device)
         {
             Log.d("BleBinder.connect", device.getName());
+
+            bluetoothGatt = device.connectGatt(getApplicationContext(), true, gattCallback);
         }
     }
 
@@ -142,5 +144,11 @@ public class BluetoothLeService extends Service
     public void onDestroy()
     {
         Log.d("service", "onDestroy");
+
+        if (bluetoothGatt != null)
+        {
+            bluetoothGatt.close();
+            bluetoothGatt = null;
+        }
     }
 }

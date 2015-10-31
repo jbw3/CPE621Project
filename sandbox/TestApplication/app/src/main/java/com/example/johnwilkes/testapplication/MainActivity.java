@@ -61,8 +61,18 @@ public class MainActivity extends AppCompatActivity
             {
                 devices.add(str);
                 devicesAdapter.notifyDataSetChanged();
+                
+                boolean ok = device.createBond();
+                Log.d("Bluetooth", String.format("Bonded: %b", ok));
 
-                /// @todo bond with device
+                if (bleBinder == null)
+                {
+                    Log.d("Bluetooth", "bleBinder is null");
+                }
+                else
+                {
+                    bleBinder.connect(device);
+                }
             }
         }
 
@@ -93,6 +103,7 @@ public class MainActivity extends AppCompatActivity
 
     private ArrayList<String> devices;
     private ArrayAdapter<String> devicesAdapter;
+    private BluetoothLeService.BleBinder bleBinder = null;
 
     private BluetoothAdapter.LeScanCallback leScanCallback =
             new BluetoothAdapter.LeScanCallback()
@@ -120,13 +131,17 @@ public class MainActivity extends AppCompatActivity
                                             devices.add(str);
                                             devicesAdapter.notifyDataSetChanged();
 
-                                            BluetoothGattCallback gattCallback = new BluetoothGattCallback()
-                                            {
-                                            };
-                                            BluetoothGatt btoothGatt = device.connectGatt(getApplicationContext(), true, gattCallback);
                                             boolean ok = device.createBond();
                                             Log.d("Bluetooth", String.format("Bonded: %b", ok));
 
+                                            if (bleBinder == null)
+                                            {
+                                                Log.d("Bluetooth", "bleBinder is null");
+                                            }
+                                            else
+                                            {
+                                                bleBinder.connect(device);
+                                            }
 //                                            Log.d("Bluetooth", "Connected devices:");
 //                                            for (BluetoothDevice d : btoothGatt.getConnectedDevices())
 //                                            {
@@ -153,13 +168,14 @@ public class MainActivity extends AppCompatActivity
         @Override
         public void onServiceConnected(ComponentName name, IBinder service)
         {
-            BluetoothLeService.BleBinder binder = (BluetoothLeService.BleBinder) service;
+            bleBinder = (BluetoothLeService.BleBinder) service;
             Log.d("onServiceConnected", "bound");
         }
 
         @Override
         public void onServiceDisconnected(ComponentName name)
         {
+            bleBinder = null;
         }
     };
 
