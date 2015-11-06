@@ -1,13 +1,13 @@
 package com.example.johnwilkes.testapplication;
 
 import android.app.Service;
+import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
-import android.os.IBinder;
-import android.support.annotation.Nullable;
+import android.os.*;
 import android.util.Log;
 
 public class BluetoothLeService extends Service
@@ -29,17 +29,12 @@ public class BluetoothLeService extends Service
     public final static String EXTRA_DATA =
             "com.example.bluetooth.le.EXTRA_DATA";
 
-    private BluetoothGatt mBluetoothGatt;
+    private BluetoothGatt bluetoothGatt = null;
     private int mConnectionState = STATE_DISCONNECTED;
 
-    @Nullable
-    @Override
-    public IBinder onBind(Intent intent)
-    {
-        return null;
-    }
+    // ------ GATT Callback ------
 
-    private final BluetoothGattCallback mGattCallback =
+    private final BluetoothGattCallback gattCallback =
             new BluetoothGattCallback()
             {
                 @Override
@@ -53,7 +48,7 @@ public class BluetoothLeService extends Service
                         broadcastUpdate(intentAction);
                         Log.i(TAG, "Connected to GATT server.");
                         Log.i(TAG, "Attempting to start service discovery:" +
-                                mBluetoothGatt.discoverServices());
+                                bluetoothGatt.discoverServices());
                     }
                     else if (newState == BluetoothProfile.STATE_DISCONNECTED)
                     {
@@ -113,4 +108,47 @@ public class BluetoothLeService extends Service
                     sendBroadcast(intent);
                 }
             };
+
+    // ------ Binder ------
+    public class BleBinder extends Binder
+    {
+        public void connect(BluetoothDevice device)
+        {
+            Log.d("BleBinder.connect", device.getName());
+
+            bluetoothGatt = device.connectGatt(getApplicationContext(), true, gattCallback);
+        }
+    }
+
+    BleBinder bleBinder = new BleBinder();
+
+    @Override
+    public void onCreate()
+    {
+        super.onCreate();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId)
+    {
+        return super.onStartCommand(intent, flags, startId);
+    }
+
+    @Override
+    public IBinder onBind(Intent intent)
+    {
+        return bleBinder;
+    }
+
+    @Override
+    public void onDestroy()
+    {
+        Log.d("service", "onDestroy");
+
+        if (bluetoothGatt != null)
+        {
+            bluetoothGatt.close();
+            bluetoothGatt = null;
+        }
+    }
 }
