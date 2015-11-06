@@ -61,7 +61,7 @@ public class MainActivity extends AppCompatActivity
             {
                 devices.add(str);
                 devicesAdapter.notifyDataSetChanged();
-                
+
                 boolean ok = device.createBond();
                 Log.d("Bluetooth", String.format("Bonded: %b", ok));
 
@@ -240,6 +240,16 @@ public class MainActivity extends AppCompatActivity
     protected void onStop()
     {
         super.onStop();
+
+        Log.d("Bluetooth", "onStop");
+    }
+
+    @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+
+        Log.d("Bluetooth", "onDestroy");
 
         unbindService(connection);
     }
