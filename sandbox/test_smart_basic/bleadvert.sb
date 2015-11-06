@@ -3,6 +3,10 @@
 // Filter policies
 #define FP_DISABLE_WHITELIST 0
 
+// BLE options
+#define BLESVC_PRIMARY 1
+#define BLESVC_SECONDARY 0
+
 // GAP settings
 #define DEV_NAME "AMDeSS Sensor"
 #define NAME_IS_WR 0                // name is writable
@@ -12,7 +16,16 @@
 #define SUPRV_TO 4000000
 #define SLAVE_LTCY 0
 
+///////////////////////////////
+// program settings
+#define PROG_TMOUT_SEC 45
+#define ENABLE_PROG_TMOUT 1
+#define CONN_TMOUT_SEC 10
+#define ADVERT_TMOUT_SEC 120
+///////////////////////////////
+
 dim res     // result of operations
+dim conn    // connection handle
 
 ////
 //// Handle BLE Advertizing Timeout
@@ -42,6 +55,40 @@ function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
 
     print "\nmsgId: ", msgId
 
+    select msgId
+        case 0
+            // received new connection! save connection handle
+            conn = msgCtx
+
+            // kick off disconnect timer
+            // timer #1: 10s, 1-shot timer (will disconnect)
+            TimerStart(1, CONN_TMOUT_SEC * 1000, 0)
+        case 1
+            print "\nConnection lost."
+            exitfunc 0  // we successfully disconnected!
+        case else
+            // do nothing special for now...
+    endselect
+
+endfunc 1
+
+////
+//// HandleTimer0()
+////
+function HandleTimer0()
+
+    print "\nProgram timed out."
+endfunc 0   // this ends program execution and brings us to interactive mode
+
+////
+//// HandleTimer1()
+////
+function HandleTimer1()
+    // don't return 0 from here b/c the disconnection will cause our
+    // HandleBleMsg() to run, which wil end execution on a disconnect.
+    if BleDisconnect(conn) == 0 then
+        print "\nDisconnected."
+    endif
 endfunc 1
 
 ////
@@ -50,7 +97,7 @@ endfunc 1
 
 dim peerAdr$
 dim advertInterval_ms
-dim advertTimeout_ms : advertTimeout_ms = 120 * 1000
+dim advertTimeout_ms : advertTimeout_ms = ADVERT_TMOUT_SEC * 1000
 dim filterPolicy
 
 // ----------------------------
@@ -62,14 +109,24 @@ filterPolicy = FP_DISABLE_WHITELIST
 
 print "\ngetting bond info..."
 
-dim addr$, extraInfo
+dim addr$, extraInfo, i, numDevices
 
-if BleBondMngrGetInfo(0, addr$, extraInfo)==0 then
-    print "\n\tMAC: ", addr$
-    print "\n\tExtra info: ", extraInfo
-else
-    print "\nUnable to get Bond info"
-endif
+numDevices = SYSINFO(2012)
+print "\nNumber of bonded devices:", numDevices
+
+for i=0 to (numDevices-1)
+    if BleBondMngrGetInfo(i, addr$, extraInfo)==0 then
+        dim hexStr$
+
+        hexStr$ = strhexize$(addr$)
+
+        print "\n\tMAC (straight):", addr$
+        print "\n\tMAC:", hexStr$
+        print "\n\tExtra info:", extraInfo
+    else
+        print "\nUnable to get Bond info"
+    endif
+next
 
 print "\nCurrent device name: ", BleGetDeviceName$()
 
@@ -77,6 +134,25 @@ print "\nCurrent device name: ", BleGetDeviceName$()
 ConfigureGAP()
 
 print "\nCurrent device name: ", BleGetDeviceName$()
+
+// Immediate Alert Service
+dim immAlertHandle, immAlertSvc
+immAlertHandle = BLEHandleUuid16(0x1802)
+
+if immAlertHandle != 0 then
+    print "\nUnable to get a handle for the ImmediateAlert service"
+    print "\n\treturn code:", immAlertHandle
+else
+    res = BLEServiceNew(BLESVC_PRIMARY, immAlertHandle, immAlertSvc)
+
+    if res == 0 then
+        print "\nCreated the ImmediateAlert service!"
+    else
+        print "\nUnable to create the ImmediateAlert service"
+    endif
+
+endif
+
 
 if BleAdvertStart(ADV_IND, peerAdr$, advertInterval_ms, advertTimeout_ms, filterPolicy) == 0 then
     print "\nAdvert successful!"
@@ -87,5 +163,13 @@ endif
 // set up event handlers
 onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
 onevent EVBLEMSG            call HandleBleMsg
+onevent EVTMR0              call HandleTimer0
+onevent EVTMR1              call HandleTimer1
+
+// start program timeout timer if enabled
+if ENABLE_PROG_TMOUT == 1 then
+    // start timer #0: 45s, 1-shot timer (will end program)
+    TimerStart(0, PROG_TMOUT_SEC * 1000, 0)
+endif
 
 waitevent

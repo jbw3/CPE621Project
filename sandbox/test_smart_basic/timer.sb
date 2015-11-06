@@ -1,0 +1,18 @@
+#define ONE_SHOT 0
+#define RECURRING 1
+
+function HandleTimer0()
+    print "\nTimer event!"
+endfunc 1   // keep waiting for more events...
+
+function HandleTimer1()
+    print "\n\nComplete"
+endfunc 0   // we are done waiting for more events.
+
+onevent EVTMR0 call HandleTimer0
+onevent EVTMR1 call HandleTimer1
+
+TimerStart(0, 500, RECURRING)
+TimerStart(1, 5000, ONE_SHOT)
+
+waitevent

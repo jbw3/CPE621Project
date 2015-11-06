@@ -39,7 +39,7 @@ dim rc
 dim i2cHandle
 
 // try to open i2c to accelerometer
-rc = i2cOpen(clock_hz, 0, i2cHandle)
+rc = i2cOpen(clock_hz, 1, i2cHandle)
 
 if rc != 0 then
     print "\nUnable to open I2C port. Return code is: 0x", INTEGER.H'rc
