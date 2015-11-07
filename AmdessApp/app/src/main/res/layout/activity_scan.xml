@@ -17,7 +17,7 @@
         android:id="@+id/rescanButton"
         android:layout_alignParentTop="true"
         android:layout_alignParentLeft="true"
-        android:onClick="onDoneClick"/>
+        android:onClick="onRescanClick"/>
 
     <Button
         android:layout_width="wrap_content"
@@ -26,7 +26,7 @@
         android:id="@+id/doneButton"
         android:layout_alignParentTop="true"
         android:layout_toRightOf="@id/rescanButton"
-        android:onClick="onRescanClick"/>
+        android:onClick="onDoneClick"/>
 
     <ListView
         android:layout_width="wrap_content"

@@ -33,8 +33,18 @@ public class AmdessDevices
         devices.remove(address);
     }
 
+    public void clear()
+    {
+        devices.clear();
+    }
+
     public BluetoothDevice getDevice(String address)
     {
         return devices.get(address);
+    }
+
+    public boolean containsDevice(String address)
+    {
+        return devices.containsKey(address);
     }
 }

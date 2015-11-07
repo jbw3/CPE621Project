@@ -1,14 +1,18 @@
 package edu.uah.cpe.amdessapp;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.le.BluetoothLeScanner;
 import android.bluetooth.le.ScanCallback;
 import android.bluetooth.le.ScanResult;
+import android.content.Intent;
 import android.os.Handler;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -22,28 +26,43 @@ public class ScanActivity extends AppCompatActivity
         @Override
         public void onScanResult(int callbackType, ScanResult result)
         {
-            BluetoothDevice device = result.getDevice();
-            String name = device.getName();
-            if (name == null)
-            {
-                name = "None";
-            }
-            String str = String.format("%s (%s)", name, device.getAddress());
+            Log.d("onScanResult", "start...");
 
-            // display the device if we haven't already
-            if (!deviceStrings.contains(str))
+            BluetoothDevice device = result.getDevice();
+
+            // if we do not already know about this device,
+            // add it to the list view
+            if (!AmdessDevices.getInstance().containsDevice(device.getAddress()))
             {
-                deviceStrings.add(str);
-                deviceStringsAdapter.notifyDataSetChanged();
+                Log.d("onScanResult", "adding device");
+
+                String name = device.getName();
+                if (name == null)
+                {
+                    name = "None";
+                }
+                String str = String.format("%s (%s)", name, device.getAddress());
+
+                // display the device if we haven't already
+                if (!deviceStrings.contains(str))
+                {
+                    devices.add(device);
+
+                    deviceStrings.add(str);
+                    deviceStringsAdapter.notifyDataSetChanged();
+                }
             }
         }
     }
 
-    private static final long SCAN_PERIOD = 8000; // ms
+    public final static String ACTION_ADDED_DEVICE = "edu.uah.cpe.amdessapp.ADDED_DEVICE";
+
+    private final static long SCAN_PERIOD = 8000; // ms
 
     private BluetoothLeScanner bluetoothLeScanner;
     private ArrayList<String> deviceStrings;
     private ArrayAdapter<String> deviceStringsAdapter;
+    private ArrayList<BluetoothDevice> devices = new ArrayList<>();
     private Button rescanButton;
     private BtScanCallback btScanCallback = new BtScanCallback();
     private Handler btScanHandler = new Handler();
@@ -64,6 +83,15 @@ public class ScanActivity extends AppCompatActivity
         deviceStringsAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, deviceStrings);
         ListView listView = (ListView) findViewById(R.id.scanListView);
         listView.setAdapter(deviceStringsAdapter);
+
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener()
+        {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id)
+            {
+                onDeviceSelected(position);
+            }
+        });
     }
 
     @Override
@@ -76,11 +104,7 @@ public class ScanActivity extends AppCompatActivity
 
     public void onDoneClick(View v)
     {
-        // stop the Bluetooth scan
-        stopScan();
-
-        // finish the activity
-        finish();
+        finishScanActivity("");
     }
 
     public void onRescanClick(View v)
@@ -88,12 +112,37 @@ public class ScanActivity extends AppCompatActivity
         startScan();
     }
 
+    public void onDeviceSelected(int row)
+    {
+        BluetoothDevice device = devices.get(row);
+
+        AmdessDevices.getInstance().addDevice(device);
+
+        finishScanActivity(device.getAddress());
+    }
+
+    private void finishScanActivity(String address)
+    {
+        Log.d("finishScanActivity", "Got here");
+
+        // stop the Bluetooth scan
+        stopScan();
+
+        Intent intent = new Intent();
+        intent.putExtra(ACTION_ADDED_DEVICE, address);
+        setResult(Activity.RESULT_OK, intent);
+
+        // finish the activity
+        finish();
+    }
+
     private void startScan()
     {
         // disable rescan button
         rescanButton.setEnabled(false);
 
-        // clear list of devices
+        // clear devices
+        devices.clear();
         deviceStrings.clear();
         deviceStringsAdapter.notifyDataSetChanged();
 

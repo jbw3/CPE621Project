@@ -1,5 +1,6 @@
 package edu.uah.cpe.amdessapp;
 
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
@@ -14,7 +15,8 @@ import java.util.ArrayList;
 
 public class SensorListActivity extends AppCompatActivity
 {
-    private static final int REQUEST_ENABLE_BT = 0xB;
+    private static final int REQUEST_ENABLE_BT = 1;
+    private static final int BT_SCAN = 2;
 
     private BluetoothAdapter btAdapter = null;
     private ArrayList<String> devices;
@@ -29,8 +31,8 @@ public class SensorListActivity extends AppCompatActivity
         btAdapter = BluetoothAdapter.getDefaultAdapter();
 
         // set up list view and adapter
-        devices = new ArrayList<String>();
-        devicesAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, devices);
+        devices = new ArrayList<>();
+        devicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, devices);
         ListView listView = (ListView) findViewById(R.id.devicesListView);
         listView.setAdapter(devicesAdapter);
 
@@ -41,10 +43,9 @@ public class SensorListActivity extends AppCompatActivity
         {
             scanButton.setEnabled(false);
         }
-        else // enable the scan button and load bonded devices
+        else // enable the scan button
         {
             scanButton.setEnabled(true);
-            loadBondedDevices();
         }
     }
 
@@ -61,6 +62,37 @@ public class SensorListActivity extends AppCompatActivity
                 Intent enableBtIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_ENABLE);
                 startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
             }
+
+            // load bonded devices
+            loadBondedDevices();
+        }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data)
+    {
+        super.onActivityResult(requestCode, resultCode, data);
+
+        if (requestCode == BT_SCAN)
+        {
+            if (resultCode == Activity.RESULT_OK)
+            {
+                String address = data.getStringExtra(ScanActivity.ACTION_ADDED_DEVICE);
+
+                if (!address.isEmpty())
+                {
+                    // bond with the device
+                    BluetoothDevice device = AmdessDevices.getInstance().getDevice(address);
+                    if (device != null)
+                    {
+                        // bond with device
+                        device.createBond();
+
+                        // add device to list view
+                        addDeviceToList(device);
+                    }
+                }
+            }
         }
     }
 
@@ -68,22 +100,35 @@ public class SensorListActivity extends AppCompatActivity
     {
         // launch the scan activity
         Intent intent = new Intent(this, ScanActivity.class);
-        startActivity(intent);
+        startActivityForResult(intent, BT_SCAN);
+    }
+
+    private void addDeviceToList(BluetoothDevice device)
+    {
+        String name = device.getName();
+        if (name == null)
+        {
+            name = "None";
+        }
+
+        String str = String.format("%s (%s)", name, device.getAddress());
+        devices.add(str);
+        devicesAdapter.notifyDataSetChanged();
     }
 
     private void loadBondedDevices()
     {
+        // clear existing lists of devices
+        AmdessDevices.getInstance().clear();
+        devices.clear();
+
         for (BluetoothDevice device : btAdapter.getBondedDevices())
         {
-            String name = device.getName();
-            if (name == null)
-            {
-                name = "None";
-            }
+            // add device to master list
+            AmdessDevices.getInstance().addDevice(device);
 
-            String str = String.format("%s (%s)", name, device.getAddress());
-            devices.add(str);
+            // add device to list view
+            addDeviceToList(device);
         }
-        devicesAdapter.notifyDataSetChanged();
     }
 }
