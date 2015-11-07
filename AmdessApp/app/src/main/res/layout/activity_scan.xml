@@ -13,9 +13,25 @@
     <Button
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="Rescan"
+        android:id="@+id/rescanButton"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentLeft="true"
+        android:onClick="onDoneClick"/>
+
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
         android:text="Done"
         android:id="@+id/doneButton"
         android:layout_alignParentTop="true"
-        android:layout_centerHorizontal="true"
-        android:onClick="onDoneClick"/>
+        android:layout_toRightOf="@id/rescanButton"
+        android:onClick="onRescanClick"/>
+
+    <ListView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/scanListView"
+        android:layout_below="@id/doneButton"
+        android:layout_centerHorizontal="true"/>
 </RelativeLayout>
