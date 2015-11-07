@@ -1,1 +1,18 @@
-print "HELLO OVER THE AIR!!!!!!!!!!!!!"
+
+sub main()
+    print "HELLO OVER THE AIR!!!!!!!!!!!!!"
+endsub
+
+////
+//// HandleTimer0
+////
+function HandleTimer0()
+    main()
+endfunc 0   // end program execution
+
+onevent EVTMR0 call HandleTimer0
+
+// timer 0, 2s, 1-shot
+TimerStart(0, 2000, 0)
+
+waitevent
