@@ -2,8 +2,6 @@ package com.example.johnwilkes.testapplication;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
-import android.bluetooth.BluetoothGatt;
-import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.le.AdvertiseCallback;
 import android.bluetooth.le.AdvertiseSettings;
 import android.bluetooth.le.BluetoothLeScanner;
@@ -39,7 +37,6 @@ public class MainActivity extends AppCompatActivity
     BluetoothLeScanner bluetoothLeScanner;
     private Handler btScanHandler;
     private BtScanCallback btScanCallback = new BtScanCallback();
-    private BluetoothLeService bleService;
 
     private class BtScanCallback extends ScanCallback
     {
@@ -104,64 +101,6 @@ public class MainActivity extends AppCompatActivity
     private ArrayList<String> devices;
     private ArrayAdapter<String> devicesAdapter;
     private BluetoothLeService.BleBinder bleBinder = null;
-
-    private BluetoothAdapter.LeScanCallback leScanCallback =
-            new BluetoothAdapter.LeScanCallback()
-            {
-                @Override
-                public void onLeScan(final BluetoothDevice device, final int rssi, byte[] scanRecord)
-                {
-                    runOnUiThread(
-                            new Runnable()
-                            {
-                                @Override
-                                public void run()
-                                {
-                                    if (device != null)
-                                    {
-                                        String name = device.getName();
-                                        if (name == null)
-                                        {
-                                            name = "None";
-                                        }
-                                        String str = String.format("Name: %s,\nAddress: %s", name, device.getAddress());
-                                        Log.d("Bluetooth", str);
-                                        if (!devices.contains(str))
-                                        {
-                                            devices.add(str);
-                                            devicesAdapter.notifyDataSetChanged();
-
-                                            boolean ok = device.createBond();
-                                            Log.d("Bluetooth", String.format("Bonded: %b", ok));
-
-                                            if (bleBinder == null)
-                                            {
-                                                Log.d("Bluetooth", "bleBinder is null");
-                                            }
-                                            else
-                                            {
-                                                bleBinder.connect(device);
-                                            }
-//                                            Log.d("Bluetooth", "Connected devices:");
-//                                            for (BluetoothDevice d : btoothGatt.getConnectedDevices())
-//                                            {
-//                                                String dName = d.getName();
-//                                                if (dName == null)
-//                                                {
-//                                                    Log.d("Bluetooth", "No name");
-//                                                }
-//                                                else
-//                                                {
-//                                                    Log.d("Bluetooth", d.getName());
-//                                                }
-//                                            }
-                                        }
-                                    }
-                                }
-                            }
-                    );
-                }
-            };
 
     private ServiceConnection connection = new ServiceConnection()
     {
