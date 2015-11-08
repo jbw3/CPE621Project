@@ -1,5 +1,6 @@
 package edu.uah.cpe.amdessapp;
 
+import android.app.ActionBar;
 import android.bluetooth.BluetoothDevice;
 import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
@@ -15,6 +16,12 @@ public class DeviceActivity extends AppCompatActivity
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
+
+        ActionBar actionBar = getActionBar();
+        if (actionBar != null)
+        {
+            actionBar.setDisplayHomeAsUpEnabled(true);
+        }
     }
 
     @Override
