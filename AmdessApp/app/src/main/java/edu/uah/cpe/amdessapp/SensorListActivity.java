@@ -7,6 +7,7 @@ import android.content.Intent;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.ListView;
@@ -22,6 +23,7 @@ public class SensorListActivity extends AppCompatActivity
     private BluetoothAdapter btAdapter = null;
     private ArrayList<String> devices;
     private ArrayAdapter<String> devicesAdapter;
+    private ArrayList<String> addresses = new ArrayList<>();
     private boolean loadDevicesOnStart = true;
 
     @Override
@@ -37,6 +39,16 @@ public class SensorListActivity extends AppCompatActivity
         devicesAdapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, devices);
         ListView listView = (ListView) findViewById(R.id.devicesListView);
         listView.setAdapter(devicesAdapter);
+
+        // set up list view item click listener
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener()
+        {
+            @Override
+            public void onItemClick(AdapterView<?> parent, View view, int position, long id)
+            {
+                selectDevice(position);
+            }
+        });
 
         // check for Bluetooth support
         Button scanButton = (Button) findViewById(R.id.scanButton);
@@ -122,8 +134,10 @@ public class SensorListActivity extends AppCompatActivity
         {
             name = "None";
         }
+        String address = device.getAddress();
+        addresses.add(address);
 
-        String str = String.format("%s (%s)", name, device.getAddress());
+        String str = String.format("%s (%s)", name, address);
         devices.add(str);
         devicesAdapter.notifyDataSetChanged();
     }
@@ -132,6 +146,7 @@ public class SensorListActivity extends AppCompatActivity
     {
         // clear existing lists of devices
         AmdessDevices.getInstance().clear();
+        addresses.clear();
         devices.clear();
         devicesAdapter.notifyDataSetChanged();
 
@@ -145,8 +160,10 @@ public class SensorListActivity extends AppCompatActivity
         }
     }
 
-    private void selectDevice(String address)
+    private void selectDevice(int row)
     {
+        String address = addresses.get(row);
+
         Intent intent = new Intent(this, DeviceActivity.class);
         intent.putExtra(DEVICE_ADDRESS_ID, address);
         startActivity(intent);
