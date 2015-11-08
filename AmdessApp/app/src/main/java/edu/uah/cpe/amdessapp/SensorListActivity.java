@@ -22,6 +22,7 @@ public class SensorListActivity extends AppCompatActivity
     private BluetoothAdapter btAdapter = null;
     private ArrayList<String> devices;
     private ArrayAdapter<String> devicesAdapter;
+    private boolean loadDevicesOnStart = true;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -64,8 +65,13 @@ public class SensorListActivity extends AppCompatActivity
                 startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
             }
 
-            // load bonded devices
-            loadBondedDevices();
+            if (loadDevicesOnStart)
+            {
+                // load bonded devices
+                loadBondedDevices();
+            }
+            // load devices the next time
+            loadDevicesOnStart = true;
         }
     }
 
@@ -91,6 +97,11 @@ public class SensorListActivity extends AppCompatActivity
 
                         // add device to list view
                         addDeviceToList(device);
+
+                        // when we return from the scanning activity, we do not want
+                        // to load bonded devices because the device we just bonded
+                        // with will not be in the list (not sure why)
+                        loadDevicesOnStart = false;
                     }
                 }
             }
@@ -122,6 +133,7 @@ public class SensorListActivity extends AppCompatActivity
         // clear existing lists of devices
         AmdessDevices.getInstance().clear();
         devices.clear();
+        devicesAdapter.notifyDataSetChanged();
 
         for (BluetoothDevice device : btAdapter.getBondedDevices())
         {
