@@ -15,8 +15,9 @@ import java.util.ArrayList;
 
 public class SensorListActivity extends AppCompatActivity
 {
-    private static final int REQUEST_ENABLE_BT = 1;
-    private static final int BT_SCAN = 2;
+    private final static int REQUEST_ENABLE_BT = 1;
+    private final static int BT_SCAN = 2;
+    public final static String DEVICE_ADDRESS_ID = "edu.uah.cpe.amdessapp.DEVICE_ADDRESS_ID";
 
     private BluetoothAdapter btAdapter = null;
     private ArrayList<String> devices;
@@ -130,5 +131,12 @@ public class SensorListActivity extends AppCompatActivity
             // add device to list view
             addDeviceToList(device);
         }
+    }
+
+    private void selectDevice(String address)
+    {
+        Intent intent = new Intent(this, DeviceActivity.class);
+        intent.putExtra(DEVICE_ADDRESS_ID, address);
+        startActivity(intent);
     }
 }
