@@ -5,10 +5,14 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.os.*;
 import android.util.Log;
+
+import java.util.HashMap;
+import java.util.UUID;
 
 public class BluetoothLeService extends Service
 {
@@ -17,6 +21,19 @@ public class BluetoothLeService extends Service
     private static final int STATE_DISCONNECTED = 0;
     private static final int STATE_CONNECTING   = 1;
     private static final int STATE_CONNECTED    = 2;
+
+    public final static UUID UUID_GENERIC_ACCESS = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb");
+    public final static UUID UUID_GENERIC_ATTRIBUTE = UUID.fromString("00001801-0000-1000-8000-00805f9b34fb");
+    public final static UUID UUID_IMMEDIATE_ALERT = UUID.fromString("00001802-0000-1000-8000-00805f9b34fb");
+
+    public final static HashMap<UUID, String> GATT_SERVICE_NAMES;
+    static
+    {
+        GATT_SERVICE_NAMES = new HashMap<>();
+        GATT_SERVICE_NAMES.put(UUID_GENERIC_ACCESS,    "GenericAccess");
+        GATT_SERVICE_NAMES.put(UUID_GENERIC_ATTRIBUTE, "GenericAttribute");
+        GATT_SERVICE_NAMES.put(UUID_IMMEDIATE_ALERT,   "ImmediateAlert");
+    }
 
     public final static String ACTION_GATT_CONNECTED =
             "com.example.bluetooth.le.ACTION_GATT_CONNECTED";
@@ -40,6 +57,8 @@ public class BluetoothLeService extends Service
                 @Override
                 public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
                 {
+                    Log.d(TAG, "onConnectionStateChange");
+
                     String intentAction;
                     if (newState == BluetoothProfile.STATE_CONNECTED)
                     {
@@ -63,6 +82,14 @@ public class BluetoothLeService extends Service
                 // New services discovered
                 public void onServicesDiscovered(BluetoothGatt gatt, int status)
                 {
+                    Log.d(TAG, "onServicesDiscovered");
+
+                    Log.d(TAG, String.format("found %s services", gatt.getServices().size()));
+                    for (BluetoothGattService service : gatt.getServices())
+                    {
+                        Log.d(TAG, String.format("%s", service.getUuid().toString()));
+                    }
+
                     if (status == BluetoothGatt.GATT_SUCCESS)
                     {
                         broadcastUpdate(ACTION_GATT_SERVICES_DISCOVERED);
@@ -77,6 +104,8 @@ public class BluetoothLeService extends Service
                 // Result of a characteristic read operation
                 public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
                 {
+                    Log.d(TAG, "onCharacteristicRead");
+
                     if (status == BluetoothGatt.GATT_SUCCESS)
                     {
                         broadcastUpdate(ACTION_DATA_AVAILABLE, characteristic);
@@ -114,7 +143,12 @@ public class BluetoothLeService extends Service
     {
         public void connect(BluetoothDevice device)
         {
-            Log.d("BleBinder.connect", device.getName());
+            String name = device.getName();
+            if (name == null)
+            {
+                name = "None";
+            }
+            Log.d("BleBinder.connect", name);
 
             bluetoothGatt = device.connectGatt(getApplicationContext(), true, gattCallback);
         }

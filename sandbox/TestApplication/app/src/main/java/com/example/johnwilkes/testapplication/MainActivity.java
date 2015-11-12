@@ -29,7 +29,7 @@ import java.util.ArrayList;
 public class MainActivity extends AppCompatActivity
 {
     private static final int REQUEST_ENABLE_BT = 0xB;
-    private static final long SCAN_PERIOD = 8000; // ms
+    private static final long SCAN_PERIOD = 20000; // ms
 
     private TextView btoothTextView;
     private Button scanButton;
