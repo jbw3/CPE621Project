@@ -24,9 +24,16 @@
         </activity>
         <activity android:name=".ScanActivity" >
         </activity>
-        <activity android:name=".DeviceActivity"
-                  android:parentActivityName="edu.uah.cpe.amdessapp.SensorListActivity">
+        <activity
+            android:name=".DeviceActivity"
+            android:parentActivityName=".SensorListActivity" >
         </activity>
+
+        <service
+            android:name=".BluetoothLeService"
+            android:enabled="true"
+            android:exported="true" >
+        </service>
     </application>
 
 </manifest>
