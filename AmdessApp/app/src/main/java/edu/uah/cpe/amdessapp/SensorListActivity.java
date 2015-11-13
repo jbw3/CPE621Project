@@ -3,9 +3,14 @@ package edu.uah.cpe.amdessapp;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.content.ComponentName;
+import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
+import android.os.IBinder;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
@@ -25,6 +30,23 @@ public class SensorListActivity extends AppCompatActivity
     private ArrayAdapter<String> devicesAdapter;
     private ArrayList<String> addresses = new ArrayList<>();
     private boolean loadDevicesOnStart = true;
+    private BluetoothLeService.BleBinder bleBinder = null;
+
+    private ServiceConnection connection = new ServiceConnection()
+    {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service)
+        {
+            bleBinder = (BluetoothLeService.BleBinder) service;
+            connectToBondedDevices();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name)
+        {
+            bleBinder = null;
+        }
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -57,9 +79,14 @@ public class SensorListActivity extends AppCompatActivity
         {
             scanButton.setEnabled(false);
         }
-        else // enable the scan button
+        else // Bluetooth is supported
         {
+            // enable the scan button
             scanButton.setEnabled(true);
+
+            // bind to the service
+            Intent intent = new Intent(this, BluetoothLeService.class);
+            bindService(intent, connection, Context.BIND_AUTO_CREATE);
         }
     }
 
@@ -88,6 +115,14 @@ public class SensorListActivity extends AppCompatActivity
     }
 
     @Override
+    protected void onDestroy()
+    {
+        super.onDestroy();
+
+        unbindService(connection);
+    }
+
+    @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data)
     {
         super.onActivityResult(requestCode, resultCode, data);
@@ -106,6 +141,12 @@ public class SensorListActivity extends AppCompatActivity
                     {
                         // bond with device
                         device.createBond();
+
+                        // connect to device
+                        if (bleBinder != null)
+                        {
+                            bleBinder.connect(device);
+                        }
 
                         // add device to list view
                         addDeviceToList(device);
@@ -157,6 +198,20 @@ public class SensorListActivity extends AppCompatActivity
 
             // add device to list view
             addDeviceToList(device);
+        }
+    }
+
+    private void connectToBondedDevices()
+    {
+        if (bleBinder == null)
+        {
+            Log.w("connectToBondedDevices", "bleBinder is null");
+            return;
+        }
+
+        for (BluetoothDevice device : btAdapter.getBondedDevices())
+        {
+            bleBinder.connect(device);
         }
     }
 
