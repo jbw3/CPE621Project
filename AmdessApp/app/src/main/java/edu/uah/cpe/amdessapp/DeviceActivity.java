@@ -6,12 +6,11 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
-
-import java.util.HashMap;
 
 public class DeviceActivity extends AppCompatActivity
 {
@@ -22,34 +21,13 @@ public class DeviceActivity extends AppCompatActivity
         {
             Log.d("onReceive", "I got here!!!!!!!!!!!!!!!!!!!!!!!");
 
-            String action = intent.getAction();
             String deviceAddress = intent.getStringExtra(Constants.INFO_DEVICE_ADDRESS);
 
             if (deviceAddress == null || deviceAddress.isEmpty())
             {
+                Log.w("onReceive", "deviceAddress is null or an empty string");
                 return;
             }
-
-            // get the current info for the device
-            DeviceInfo info = infoMap.get(deviceAddress);
-
-            // if the info does not exist, create it
-            if (info == null)
-            {
-                info = new DeviceInfo();
-            }
-
-            if (action.equals(Constants.ACTION_GATT_CONNECTED))
-            {
-                info.connected = true;
-            }
-            else if (action.equals(Constants.ACTION_GATT_DISCONNECTED))
-            {
-                info.connected = false;
-            }
-
-            // update the info in the map
-            infoMap.put(deviceAddress, info);
 
             if (address.equals(deviceAddress))
             {
@@ -58,13 +36,7 @@ public class DeviceActivity extends AppCompatActivity
         }
     }
 
-    private class DeviceInfo
-    {
-        public boolean connected = false;
-    }
-
     private String address = "";
-    private HashMap<String, DeviceInfo> infoMap = new HashMap<>();
     private BluetoothInfoReceiver infoReceiver = new BluetoothInfoReceiver();
     private IntentFilter intentFilter = new IntentFilter();
 
@@ -129,15 +101,32 @@ public class DeviceActivity extends AppCompatActivity
 
     private void syncWithInfo()
     {
-        DeviceInfo info = infoMap.get(address);
+        Log.d("syncWithInfo", "start");
+        BluetoothLeService.DeviceInfo info = BluetoothLeService.getDeviceInfo(address);
         if (info == null)
         {
+            Log.w("syncWithInfo", "info is null!!!");
             return;
         }
 
-        String connectionStatus = info.connected ? "Connected" : "Disconnected";
-
         TextView connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
+
+        String connectionStatus;
+        int color;
+        if (info.connected)
+        {
+            Log.d("syncWithInfo", "Connected");
+            connectionStatus = "Connected";
+            color = Color.GREEN;
+        }
+        else
+        {
+            Log.d("syncWithInfo", "Disconnected");
+            connectionStatus = "Disconnected";
+            color = Color.RED;
+
+        }
         connectionStatusTextView.setText(connectionStatus);
+        connectionStatusTextView.setTextColor(color);
     }
 }

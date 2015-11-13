@@ -10,9 +10,14 @@ import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
 
+import java.util.HashMap;
+
 public class BluetoothLeService extends Service
 {
-    private BluetoothGatt bluetoothGatt = null;
+    public class DeviceInfo
+    {
+        public boolean connected = false;
+    }
 
     // ------ GATT Callback ------
     private class BtGattCallback extends BluetoothGattCallback
@@ -26,6 +31,9 @@ public class BluetoothLeService extends Service
             if (newState == BluetoothProfile.STATE_CONNECTED)
             {
                 Log.d("onConnectionStateChange", "Connected");
+
+                setConnectionStatus(address, true);
+
                 Intent intent = new Intent(Constants.ACTION_GATT_CONNECTED);
                 intent.putExtra(Constants.INFO_DEVICE_ADDRESS, address);
                 sendBroadcast(intent);
@@ -33,6 +41,9 @@ public class BluetoothLeService extends Service
             else if (newState == BluetoothProfile.STATE_DISCONNECTED)
             {
                 Log.d("onConnectionStateChange", "Disconnected");
+
+                setConnectionStatus(address, false);
+
                 Intent intent = new Intent(Constants.ACTION_GATT_DISCONNECTED);
                 intent.putExtra(Constants.INFO_DEVICE_ADDRESS, address);
                 sendBroadcast(intent);
@@ -51,6 +62,13 @@ public class BluetoothLeService extends Service
 
     private final BtGattCallback gattCallback = new BtGattCallback();
     private BleBinder bleBinder = new BleBinder();
+    private BluetoothGatt bluetoothGatt = null;
+    static private HashMap<String, DeviceInfo> infoMap = new HashMap<>();
+
+    static public DeviceInfo getDeviceInfo(String address)
+    {
+        return infoMap.get(address);
+    }
 
     public BluetoothLeService()
     {
@@ -70,5 +88,22 @@ public class BluetoothLeService extends Service
             bluetoothGatt.close();
             bluetoothGatt = null;
         }
+    }
+
+    private void setConnectionStatus(String address, boolean connected)
+    {
+        // get the current info for the device
+        DeviceInfo info = infoMap.get(address);
+
+        // if the info does not exist, create it
+        if (info == null)
+        {
+            info = new DeviceInfo();
+        }
+
+        info.connected = connected;
+
+        // update the info in the map
+        infoMap.put(address, info);
     }
 }
