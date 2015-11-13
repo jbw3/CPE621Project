@@ -23,7 +23,6 @@ public class SensorListActivity extends AppCompatActivity
 {
     private final static int REQUEST_ENABLE_BT = 1;
     private final static int BT_SCAN = 2;
-    public final static String DEVICE_ADDRESS_ID = "edu.uah.cpe.amdessapp.DEVICE_ADDRESS_ID";
 
     private BluetoothAdapter btAdapter = null;
     private ArrayList<String> devices;
@@ -220,7 +219,7 @@ public class SensorListActivity extends AppCompatActivity
         String address = addresses.get(row);
 
         Intent intent = new Intent(this, DeviceActivity.class);
-        intent.putExtra(DEVICE_ADDRESS_ID, address);
+        intent.putExtra(Constants.INFO_DEVICE_ADDRESS, address);
         startActivity(intent);
     }
 }

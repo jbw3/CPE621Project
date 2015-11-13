@@ -12,11 +12,6 @@ import android.util.Log;
 
 public class BluetoothLeService extends Service
 {
-    public static final String ACTION_GATT_CONNECTED =
-            "edu.uah.cpe.amdessapp.ACTION_GATT_CONNECTED";
-    public static final String ACTION_GATT_DISCONNECTED =
-            "edu.uah.cpe.amdessapp.ACTION_GATT_DISCONNECTED";
-
     private BluetoothGatt bluetoothGatt = null;
 
     // ------ GATT Callback ------
@@ -25,16 +20,21 @@ public class BluetoothLeService extends Service
         @Override
         public void onConnectionStateChange(BluetoothGatt gatt, int status, int newState)
         {
+            BluetoothDevice device = gatt.getDevice();
+            String address = device.getAddress();
+
             if (newState == BluetoothProfile.STATE_CONNECTED)
             {
                 Log.d("onConnectionStateChange", "Connected");
-                Intent intent = new Intent(ACTION_GATT_CONNECTED);
+                Intent intent = new Intent(Constants.ACTION_GATT_CONNECTED);
+                intent.putExtra(Constants.INFO_DEVICE_ADDRESS, address);
                 sendBroadcast(intent);
             }
             else if (newState == BluetoothProfile.STATE_DISCONNECTED)
             {
                 Log.d("onConnectionStateChange", "Disconnected");
-                Intent intent = new Intent(ACTION_GATT_DISCONNECTED);
+                Intent intent = new Intent(Constants.ACTION_GATT_DISCONNECTED);
+                intent.putExtra(Constants.INFO_DEVICE_ADDRESS, address);
                 sendBroadcast(intent);
             }
         }
