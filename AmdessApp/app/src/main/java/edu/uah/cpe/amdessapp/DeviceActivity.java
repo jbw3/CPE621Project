@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -39,12 +38,15 @@ public class DeviceActivity extends AppCompatActivity
     private String address = "";
     private BluetoothInfoReceiver infoReceiver = new BluetoothInfoReceiver();
     private IntentFilter intentFilter = new IntentFilter();
+    private TextView connectionStatusTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
     {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_device);
+
+        connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null)
@@ -106,10 +108,10 @@ public class DeviceActivity extends AppCompatActivity
         if (info == null)
         {
             Log.w("syncWithInfo", "info is null!!!");
+            connectionStatusTextView.setText("Disconnected");
+            connectionStatusTextView.setTextColor(Constants.DISCONNECTED_COLOR);
             return;
         }
-
-        TextView connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
 
         String connectionStatus;
         int color;
@@ -117,14 +119,13 @@ public class DeviceActivity extends AppCompatActivity
         {
             Log.d("syncWithInfo", "Connected");
             connectionStatus = "Connected";
-            color = Color.GREEN;
+            color = Constants.CONNECTED_COLOR;
         }
         else
         {
             Log.d("syncWithInfo", "Disconnected");
             connectionStatus = "Disconnected";
-            color = Color.RED;
-
+            color = Constants.DISCONNECTED_COLOR;
         }
         connectionStatusTextView.setText(connectionStatus);
         connectionStatusTextView.setTextColor(color);
