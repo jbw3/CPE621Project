@@ -130,6 +130,7 @@
 //This is the target Bluetooth device to connect to, 7 bytes in hex
 #define DVKAddr "01CD54D777D003"
 #define JovanovBoard1Addr "01EBCF431B774B"
+#define JovanovBoard2WRedBoard "01C47190CC8348"
 #define BTAddr DVKAddr
 
 //******************************************************************************

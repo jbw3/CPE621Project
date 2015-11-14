@@ -12,6 +12,12 @@ endfunc 0   // end program execution
 
 onevent EVTMR0 call HandleTimer0
 
+UartClose()
+
+dim rc
+
+rc = UartOpen(9600,0,0,"CN81H")
+
 // timer 0, 2s, 1-shot
 TimerStart(0, 2000, 0)
 
