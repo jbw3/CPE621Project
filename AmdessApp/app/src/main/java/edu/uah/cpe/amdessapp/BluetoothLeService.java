@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
 import android.os.Binder;
@@ -14,12 +15,15 @@ import android.os.IBinder;
 import android.util.Log;
 
 import java.util.HashMap;
+import java.util.LinkedList;
+import java.util.UUID;
 
 public class BluetoothLeService extends Service
 {
     public class DeviceInfo
     {
         public boolean connected = false;
+        public LinkedList<UUID> services = new LinkedList<>();
     }
 
     // ------ GATT Callback ------
@@ -38,6 +42,8 @@ public class BluetoothLeService extends Service
                 setConnectionStatus(address, true);
 
                 broadcastUpdate(Constants.ACTION_GATT_CONNECTED, address);
+
+                bluetoothGatt.discoverServices();
             }
             else if (newState == BluetoothProfile.STATE_DISCONNECTED)
             {
@@ -50,8 +56,56 @@ public class BluetoothLeService extends Service
         }
 
         @Override
+        public void onServicesDiscovered(BluetoothGatt gatt, int status)
+        {
+            Log.d("onServicesDiscovered", "start");
+
+            LinkedList<UUID> services = new LinkedList<>();
+            String address = gatt.getDevice().getAddress();
+
+            Log.d("onServicesDiscovered", String.format("found %s services", gatt.getServices().size()));
+            for (BluetoothGattService service : gatt.getServices())
+            {
+                // add service
+                UUID id = service.getUuid();
+                services.add(id);
+
+//                BluetoothGattCharacteristic characteristic = service.getCharacteristic(id);
+//                if (characteristic != null)
+//                {
+//                    boolean ok = characteristic.getUuid().equals(Constants.UUID_IMMEDIATE_ALERT);
+//                    if (ok)
+//                    {
+//                        gatt.setCharacteristicNotification(characteristic, true);
+//                    }
+//                }
+
+                // debugging
+                String serviceName = Constants.GATT_SERVICE_NAMES.get(id);
+                if (serviceName == null)
+                {
+                    serviceName = "?";
+                }
+                Log.d("onServicesDiscovered", String.format("%s (%s)",
+                        id.toString(),
+                        serviceName));
+
+                for (BluetoothGattCharacteristic c : service.getCharacteristics())
+                {
+                    Log.d("onServicesDiscovered", String.format("  %s", c.getUuid().toString()));
+                }
+            }
+
+            setServices(address, services);
+
+            broadcastUpdate(Constants.ACTION_GATT_SERVICES_DISCOVERED, address);
+        }
+
+        @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
         {
+            Log.d("onCharacteristicChanged", "start");
+
             if (characteristic.getUuid().equals(Constants.UUID_IMMEDIATE_ALERT))
             {
                 onReceiveImmediateAlert(gatt, characteristic);
@@ -112,6 +166,23 @@ public class BluetoothLeService extends Service
         }
 
         info.connected = connected;
+
+        // update the info in the map
+        infoMap.put(address, info);
+    }
+
+    private void setServices(String address, LinkedList<UUID> services)
+    {
+        // get the current info for the device
+        DeviceInfo info = infoMap.get(address);
+
+        // if the info does not exist, create it
+        if (info == null)
+        {
+            info = new DeviceInfo();
+        }
+
+        info.services = services;
 
         // update the info in the map
         infoMap.put(address, info);

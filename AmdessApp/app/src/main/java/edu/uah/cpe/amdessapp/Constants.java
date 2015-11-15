@@ -2,6 +2,7 @@ package edu.uah.cpe.amdessapp;
 
 import android.graphics.Color;
 
+import java.util.HashMap;
 import java.util.UUID;
 
 public class Constants
@@ -15,13 +16,25 @@ public class Constants
     public static final String ACTION_GATT_DISCONNECTED =
             "edu.uah.cpe.amdessapp.ACTION_GATT_DISCONNECTED";
 
+    public static final String ACTION_GATT_SERVICES_DISCOVERED =
+            "edu.uah.cpe.amdessapp.ACTION_GATT_SERVICES_DISCOVERED";
+
     public final static String INFO_DEVICE_ADDRESS =
             "edu.uah.cpe.amdessapp.INFO_DEVICE_ADDRESS";
 
     // ------ UUIDs ------
-    public final static UUID UUID_GENERIC_ACCESS = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb");
+    public final static UUID UUID_GENERIC_ACCESS    = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb");
     public final static UUID UUID_GENERIC_ATTRIBUTE = UUID.fromString("00001801-0000-1000-8000-00805f9b34fb");
-    public final static UUID UUID_IMMEDIATE_ALERT = UUID.fromString("00001802-0000-1000-8000-00805f9b34fb");
+    public final static UUID UUID_IMMEDIATE_ALERT   = UUID.fromString("00001802-0000-1000-8000-00805f9b34fb");
+
+    public final static HashMap<UUID, String> GATT_SERVICE_NAMES;
+    static
+    {
+        GATT_SERVICE_NAMES = new HashMap<>();
+        GATT_SERVICE_NAMES.put(UUID_GENERIC_ACCESS,    "GenericAccess");
+        GATT_SERVICE_NAMES.put(UUID_GENERIC_ATTRIBUTE, "GenericAttribute");
+        GATT_SERVICE_NAMES.put(UUID_IMMEDIATE_ALERT,   "ImmediateAlert");
+    }
 
     // ------ Colors ------
 

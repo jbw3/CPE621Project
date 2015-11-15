@@ -11,6 +11,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.widget.TextView;
 
+import java.util.UUID;
+
 public class DeviceActivity extends AppCompatActivity
 {
     private class BluetoothInfoReceiver extends BroadcastReceiver
@@ -18,8 +20,6 @@ public class DeviceActivity extends AppCompatActivity
         @Override
         public void onReceive(Context context, Intent intent)
         {
-            Log.d("onReceive", "I got here!!!!!!!!!!!!!!!!!!!!!!!");
-
             String deviceAddress = intent.getStringExtra(Constants.INFO_DEVICE_ADDRESS);
 
             if (deviceAddress == null || deviceAddress.isEmpty())
@@ -39,6 +39,7 @@ public class DeviceActivity extends AppCompatActivity
     private BluetoothInfoReceiver infoReceiver = new BluetoothInfoReceiver();
     private IntentFilter intentFilter = new IntentFilter();
     private TextView connectionStatusTextView;
+    private TextView servicesTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -47,6 +48,7 @@ public class DeviceActivity extends AppCompatActivity
         setContentView(R.layout.activity_device);
 
         connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
+        servicesTextView = (TextView) findViewById(R.id.servicesTextView);
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null)
@@ -57,6 +59,7 @@ public class DeviceActivity extends AppCompatActivity
         // add actions to intent filter
         intentFilter.addAction(Constants.ACTION_GATT_CONNECTED);
         intentFilter.addAction(Constants.ACTION_GATT_DISCONNECTED);
+        intentFilter.addAction(Constants.ACTION_GATT_SERVICES_DISCOVERED);
     }
 
     @Override
@@ -110,9 +113,11 @@ public class DeviceActivity extends AppCompatActivity
             Log.w("syncWithInfo", "info is null!!!");
             connectionStatusTextView.setText("Disconnected");
             connectionStatusTextView.setTextColor(Constants.DISCONNECTED_COLOR);
+            servicesTextView.setText("Services:\n");
             return;
         }
 
+        // update connection status
         String connectionStatus;
         int color;
         if (info.connected)
@@ -129,5 +134,19 @@ public class DeviceActivity extends AppCompatActivity
         }
         connectionStatusTextView.setText(connectionStatus);
         connectionStatusTextView.setTextColor(color);
+
+        // update services
+        String services = "Services:\n";
+        for (UUID id : info.services)
+        {
+            String serviceName = Constants.GATT_SERVICE_NAMES.get(id);
+            if (serviceName == null)
+            {
+                serviceName = "???";
+            }
+
+            services.concat(String.format("%s (%s)", id.toString(), serviceName));
+        }
+        servicesTextView.setText(services);
     }
 }
