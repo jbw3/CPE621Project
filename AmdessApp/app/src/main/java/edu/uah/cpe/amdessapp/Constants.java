@@ -23,17 +23,35 @@ public class Constants
             "edu.uah.cpe.amdessapp.INFO_DEVICE_ADDRESS";
 
     // ------ UUIDs ------
-    public final static UUID UUID_GENERIC_ACCESS    = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb");
-    public final static UUID UUID_GENERIC_ATTRIBUTE = UUID.fromString("00001801-0000-1000-8000-00805f9b34fb");
-    public final static UUID UUID_IMMEDIATE_ALERT   = UUID.fromString("00001802-0000-1000-8000-00805f9b34fb");
 
-    public final static HashMap<UUID, String> GATT_SERVICE_NAMES;
+    // services
+    public static final UUID UUID_GENERIC_ACCESS    = UUID.fromString("00001800-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_GENERIC_ATTRIBUTE = UUID.fromString("00001801-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_IMMEDIATE_ALERT   = UUID.fromString("00001802-0000-1000-8000-00805f9b34fb");
+
+    // characteristics
+    public static final UUID UUID_DEVICE_NAME       = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_DEVICE_APPEARANCE = UUID.fromString("00002a01-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_PERIPHERAL_PREFERRED_CONNECTION_PARAMETERS = UUID.fromString("00002a04-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_SERVICE_CHANGED   = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
+
+    public static final HashMap<UUID, String> GATT_SERVICE_NAMES;
     static
     {
         GATT_SERVICE_NAMES = new HashMap<>();
-        GATT_SERVICE_NAMES.put(UUID_GENERIC_ACCESS,    "GenericAccess");
-        GATT_SERVICE_NAMES.put(UUID_GENERIC_ATTRIBUTE, "GenericAttribute");
-        GATT_SERVICE_NAMES.put(UUID_IMMEDIATE_ALERT,   "ImmediateAlert");
+        GATT_SERVICE_NAMES.put(UUID_GENERIC_ACCESS,    "Generic Access");
+        GATT_SERVICE_NAMES.put(UUID_GENERIC_ATTRIBUTE, "Generic Attribute");
+        GATT_SERVICE_NAMES.put(UUID_IMMEDIATE_ALERT,   "Immediate Alert");
+    }
+
+    public static final HashMap<UUID, String> GATT_CHARACTERISTIC_NAMES;
+    static
+    {
+        GATT_CHARACTERISTIC_NAMES = new HashMap<>();
+        GATT_CHARACTERISTIC_NAMES.put(UUID_DEVICE_NAME,       "Device Name");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_DEVICE_APPEARANCE, "Device Appearance");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_PERIPHERAL_PREFERRED_CONNECTION_PARAMETERS, "Peripheral Preferred Connection Parameters");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_SERVICE_CHANGED,   "Service Changed");
     }
 
     // ------ Colors ------
