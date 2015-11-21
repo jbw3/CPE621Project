@@ -20,6 +20,8 @@ public class DeviceActivity extends AppCompatActivity
         @Override
         public void onReceive(Context context, Intent intent)
         {
+            Log.d("onReceive", "start...");
+
             String deviceAddress = intent.getStringExtra(Constants.INFO_DEVICE_ADDRESS);
 
             if (deviceAddress == null || deviceAddress.isEmpty())
@@ -107,6 +109,7 @@ public class DeviceActivity extends AppCompatActivity
     private void syncWithInfo()
     {
         Log.d("syncWithInfo", "start");
+
         BluetoothLeService.DeviceInfo info = BluetoothLeService.getDeviceInfo(address);
         if (info == null)
         {
@@ -145,8 +148,9 @@ public class DeviceActivity extends AppCompatActivity
                 serviceName = "???";
             }
 
-            services.concat(String.format("%s (%s)", id.toString(), serviceName));
+            services = services.concat(String.format("%s (%s)\n", id.toString(), serviceName));
         }
+
         servicesTextView.setText(services);
     }
 }

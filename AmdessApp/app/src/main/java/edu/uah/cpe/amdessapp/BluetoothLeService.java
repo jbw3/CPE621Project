@@ -43,7 +43,7 @@ public class BluetoothLeService extends Service
 
                 broadcastUpdate(Constants.ACTION_GATT_CONNECTED, address);
 
-                bluetoothGatt.discoverServices();
+                gatt.discoverServices();
             }
             else if (newState == BluetoothProfile.STATE_DISCONNECTED)
             {
@@ -70,16 +70,6 @@ public class BluetoothLeService extends Service
                 UUID id = service.getUuid();
                 services.add(id);
 
-//                BluetoothGattCharacteristic characteristic = service.getCharacteristic(id);
-//                if (characteristic != null)
-//                {
-//                    boolean ok = characteristic.getUuid().equals(Constants.UUID_IMMEDIATE_ALERT);
-//                    if (ok)
-//                    {
-//                        gatt.setCharacteristicNotification(characteristic, true);
-//                    }
-//                }
-
                 // debugging
                 String serviceName = Constants.GATT_SERVICE_NAMES.get(id);
                 if (serviceName == null)
@@ -92,11 +82,23 @@ public class BluetoothLeService extends Service
 
                 for (BluetoothGattCharacteristic c : service.getCharacteristics())
                 {
-                    Log.d("onServicesDiscovered", String.format("  %s", c.getUuid().toString()));
+                    UUID charId = c.getUuid();
+
+                    // debugging
+                    String charName = Constants.GATT_CHARACTERISTIC_NAMES.get(charId);
+                    if (charName == null)
+                    {
+                        charName = "?";
+                    }
+                    Log.d("onServicesDiscovered", String.format("  %s (%s)",
+                                                                charId.toString(),
+                                                                charName));
                 }
             }
 
             setServices(address, services);
+
+            Log.d("onServicesDiscovered", String.format("services: %s", services.size()));
 
             broadcastUpdate(Constants.ACTION_GATT_SERVICES_DISCOVERED, address);
         }

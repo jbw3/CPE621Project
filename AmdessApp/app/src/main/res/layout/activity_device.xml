@@ -47,6 +47,7 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Services:\n"
+        android:textSize="8pt"
         android:id="@+id/servicesTextView"
         android:layout_below="@+id/addressTextView"
         android:layout_marginTop="20dp"
