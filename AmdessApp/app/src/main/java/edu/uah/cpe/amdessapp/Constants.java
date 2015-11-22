@@ -30,10 +30,14 @@ public class Constants
     public static final UUID UUID_IMMEDIATE_ALERT   = UUID.fromString("00001802-0000-1000-8000-00805f9b34fb");
 
     // characteristics
-    public static final UUID UUID_DEVICE_NAME       = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb");
-    public static final UUID UUID_DEVICE_APPEARANCE = UUID.fromString("00002a01-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_DEVICE_NAME             = UUID.fromString("00002a00-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_APPEARANCE              = UUID.fromString("00002a01-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_PERIPHERAL_PRIVACY_FLAG = UUID.fromString("00002a02-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_RECONNECTION_ADDRESS    = UUID.fromString("00002a03-0000-1000-8000-00805f9b34fb");
     public static final UUID UUID_PERIPHERAL_PREFERRED_CONNECTION_PARAMETERS = UUID.fromString("00002a04-0000-1000-8000-00805f9b34fb");
-    public static final UUID UUID_SERVICE_CHANGED   = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_SERVICE_CHANGED         = UUID.fromString("00002a05-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_ALERT_LEVEL             = UUID.fromString("00002a06-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_BATTERY_LEVEL           = UUID.fromString("00002a19-0000-1000-8000-00805f9b34fb");
 
     public static final HashMap<UUID, String> GATT_SERVICE_NAMES;
     static
@@ -48,10 +52,14 @@ public class Constants
     static
     {
         GATT_CHARACTERISTIC_NAMES = new HashMap<>();
-        GATT_CHARACTERISTIC_NAMES.put(UUID_DEVICE_NAME,       "Device Name");
-        GATT_CHARACTERISTIC_NAMES.put(UUID_DEVICE_APPEARANCE, "Device Appearance");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_DEVICE_NAME,             "Device Name");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_APPEARANCE,              "Appearance");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_PERIPHERAL_PRIVACY_FLAG, "Peripheral Privacy Flag");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_RECONNECTION_ADDRESS,    "Reconnection Address");
         GATT_CHARACTERISTIC_NAMES.put(UUID_PERIPHERAL_PREFERRED_CONNECTION_PARAMETERS, "Peripheral Preferred Connection Parameters");
-        GATT_CHARACTERISTIC_NAMES.put(UUID_SERVICE_CHANGED,   "Service Changed");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_SERVICE_CHANGED,         "Service Changed");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_ALERT_LEVEL,             "Alert Level");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_BATTERY_LEVEL,           "Battery Level");
     }
 
     // ------ Colors ------
