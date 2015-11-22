@@ -7,6 +7,7 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothGatt;
 import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
 import android.bluetooth.BluetoothProfile;
 import android.content.Intent;
@@ -80,14 +81,14 @@ public class BluetoothLeService extends Service
                         id.toString(),
                         serviceName));
 
-                for (BluetoothGattCharacteristic c : service.getCharacteristics())
+                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics())
                 {
-                    UUID charId = c.getUuid();
+                    UUID charId = characteristic.getUuid();
 
-                    if (id.equals(Constants.UUID_IMMEDIATE_ALERT) && charId.equals(Constants.UUID_ALERT_LEVEL))
+                    if (id.equals(Constants.UUID_SERVICE_IMMEDIATE_ALERT) && charId.equals(Constants.UUID_CHARACTERISTIC_ALERT_LEVEL))
                     {
                         Log.d("onServicesDiscovered", "Setting notification");
-                        gatt.setCharacteristicNotification(c, true);
+                        gatt.setCharacteristicNotification(characteristic, true);
                     }
 
                     // debugging
@@ -99,6 +100,21 @@ public class BluetoothLeService extends Service
                     Log.d("onServicesDiscovered", String.format("  %s (%s)",
                                                                 charId.toString(),
                                                                 charName));
+
+                    for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors())
+                    {
+                        UUID descriptorId = descriptor.getUuid();
+
+                        // debugging
+                        String descriptorName = Constants.GATT_DESCRIPTOR_NAMES.get(descriptorId);
+                        if (descriptorName == null)
+                        {
+                            descriptorName = "?";
+                        }
+                        Log.d("onServicesDiscovered", String.format("    %s (%s)",
+                                                                    descriptorId.toString(),
+                                                                    descriptorName));
+                    }
                 }
             }
 
@@ -114,7 +130,7 @@ public class BluetoothLeService extends Service
         {
             Log.d("onCharacteristicChanged", "start");
 
-            if (characteristic.getUuid().equals(Constants.UUID_IMMEDIATE_ALERT))
+            if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_ALERT_LEVEL))
             {
                 onReceiveImmediateAlert(gatt, characteristic);
             }
