@@ -84,6 +84,12 @@ public class BluetoothLeService extends Service
                 {
                     UUID charId = c.getUuid();
 
+                    if (id.equals(Constants.UUID_IMMEDIATE_ALERT) && charId.equals(Constants.UUID_ALERT_LEVEL))
+                    {
+                        Log.d("onServicesDiscovered", "Setting notification");
+                        gatt.setCharacteristicNotification(c, true);
+                    }
+
                     // debugging
                     String charName = Constants.GATT_CHARACTERISTIC_NAMES.get(charId);
                     if (charName == null)
