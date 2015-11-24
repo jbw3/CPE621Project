@@ -5,3 +5,15 @@ big picture solution (grandma can understnad)
 existing products...what niche do they miss?
 
 what methods were used to test the solution?
+
+
+- original problem
+- big picture solution (grandma)
+    * diagrams
+- existing products
+    * what niche area do they miss?
+- solution details
+- issues we faced
+- modified project (capacitance sensor)
+- methods to test
+- demo?

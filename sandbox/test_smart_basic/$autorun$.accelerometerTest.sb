@@ -1,0 +1,65 @@
+#define clock_hz 100000
+
+// MMA8653FC Constants
+#define MMA8653FC_Address 0x01D
+#define MMA8653FC_CTRL_REG1 0x2A
+#define MMA8653FC_WHO_AM_I 0x0D
+#define MMA8653FC_STATUS_REG 0x00
+
+#define AD7745_Address 0x48
+#define AD7745_STATUS_REG 0x00
+
+#define SLAVE_ADDRESS MMA8653FC_Address
+#define REG_ADDRESS   MMA8653FC_STATUS_REG
+
+///
+/// TestI2C
+///
+function TestI2C()
+
+dim rc
+dim statusReg
+
+print "\nSLAVE_ADDRESS: 0x", INTEGER.H'SLAVE_ADDRESS
+print "\nREG_ADDRESS: 0x", INTEGER.H'REG_ADDRESS
+
+statusReg = 0
+
+// read REG
+rc = i2cReadReg8(SLAVE_ADDRESS, REG_ADDRESS, statusReg)
+
+if rc != 0 then
+    print "\nError reading REG from accelerometer"
+    print "\n", "Return code: 0x", INTEGER.H'rc
+else
+    print "\nREG value: 0x", INTEGER.H'statusReg
+endif
+
+endfunc 1   // keep running...
+
+///
+/// main()
+///
+dim rc
+dim i2cHandle
+
+// call TestI2C when the timer goes off...
+onevent EVTMR0 call TestI2C
+
+// try to open i2c to accelerometer
+rc = i2cOpen(clock_hz, 1, i2cHandle)
+
+if rc != 0 then
+    print "\nUnable to open I2C port. Return code is: 0x", INTEGER.H'rc
+else
+    print "\nOpened I2C port successfully!"
+endif
+
+// ok to close i2c even if not opened successfully
+//i2cClose(i2cHandle)
+//print "\nClosed I2C port"
+
+// timer 0, 1s period, recurring timer
+TimerStart(0, 1 * 1000, 1)
+
+waitevent
