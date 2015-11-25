@@ -1,0 +1,39 @@
+// uartTest.sb
+
+dim uartRxStr$, len
+dim termStr$
+dim endFuncVal
+
+termStr$ = "end\r"
+endFuncVal = 1
+
+////
+//// HandleUartRx()
+////
+function HandleUartRx()
+    TimerStart(0,100,0)     // allow enough time for data to reach rx buffer
+endfunc 1   // keep processing
+
+////
+//// HandleTimer0()
+////
+function HandleTimer0()
+    len = uartRead(uartRxStr$)
+    print "\nReceived from uart:", uartRxStr$    
+
+    if strcmp(uartRxStr$, termStr$) == 0 then
+        endFuncVal = 0
+    endif
+
+    uartRxStr$ = ""     // reset the variable
+
+endfunc endFuncVal   // keep processing
+
+////
+//// main()
+////
+
+onevent EVUARTRX call HandleUartRx
+onevent EVTMR0   call HandleTimer0
+
+waitevent
