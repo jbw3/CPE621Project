@@ -18,9 +18,6 @@
 
 ///////////////////////////////
 // program settings
-#define PROG_TMOUT_SEC 45
-#define ENABLE_PROG_TMOUT 1
-#define CONN_TMOUT_SEC 20
 #define ALERT_AFTER_SEC 5
 #define ADVERT_TMOUT_SEC 120
 ///////////////////////////////
@@ -30,6 +27,11 @@ dim conn            // connection handle
 dim immAlertSvc     // immediate alert service handle
 dim alertLevel$     // alert level value
 dim alertLevelHandle    // alert level characteristic handle
+dim EnableCreateIASvc
+
+// uart vars
+dim uartRxStr$, termStr$, endFuncVal, len
+termStr$ = "end\r"  // ends execution
 
 ////
 //// Handle BLE Advertizing Timeout
@@ -66,7 +68,7 @@ function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
 
             // kick off disconnect timer
             // timer #1: 1-shot timer (will disconnect)
-            TimerStart(1, CONN_TMOUT_SEC * 1000, 0)
+            //TimerStart(1, CONN_TMOUT_SEC * 1000, 0)
             // timer #2: 1-shot timer
             TimerStart(2, ALERT_AFTER_SEC * 1000, 0)
         case 1
@@ -79,11 +81,11 @@ function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
 endfunc 1
 
 ////
-//// KillProgram()
+//// HandleUartRx()
 ////
-function KillProgram()
-    print "\nProgram timed out."
-endfunc 0   // this ends program execution and brings us to interactive mode
+function HandleUartRx()
+    TimerStart(3,100,0)     // allow enough time for data to reach rx buffer
+endfunc 1
 
 ////
 //// ForceDisconnect()
@@ -125,115 +127,153 @@ function TriggerAlert()
 endfunc 1
 
 ////
+//// CreateImmAlertSvc()
+////
+sub CreateImmAlertSvc()
+
+    // Immediate Alert Service
+    dim IASUuid16
+    dim IAS_ID
+    IAS_ID = 0x1802
+
+    // get handle to immediate alert service
+    IASUuid16 = BLEHandleUuid16(IAS_ID)
+
+    print "\nIAS 128-bit UUID:", INTEGER.H'IASUuid16
+
+    res = BLEServiceNew(BLESVC_PRIMARY, IASUuid16, immAlertSvc)
+
+    if res == 0 then
+        print "\nCreated the ImmediateAlert service!"
+    else
+        print "\nUnable to create the ImmediateAlert service"
+    endif
+
+    dim mdVal
+
+    mdVal = BleAttrMetadata(1, 1, 1, 0, res)
+
+    if res == 0 then
+        print "\nBleAttrMetadata returned a success code."
+    else
+        print "\nBleAttrMetadata did not work!", integer.H'res
+    endif
+
+    res = BleCharNew(6, BleHandleUuid16(0x2A06), mdVal, 0, 0)
+
+    if res == 0 then
+        print "\nSuccessfully created a new characteristic for IAS!"
+    else
+        print "\nUnable to create a new characteristic."
+        print "\nReturn code: ", integer.H'res
+    endif
+
+    alertLevel$ = "\00"   // no alert by default
+
+    res = BleCharCommit(immAlertSvc, alertLevel$, alertLevelHandle)
+
+    if res == 0 then
+        print "\nSuccessfully committed immediate alert characteristic"
+    else
+        print "\nUnable to commit IAS characteristic"
+        print "\nReturn code: ", integer.H'res
+    endif
+
+endsub
+
+////
+//// StartBle()
+////
+sub StartBle()
+
+    dim peerAdr$
+    dim advertInterval_ms
+    dim advertTimeout_ms : advertTimeout_ms = ADVERT_TMOUT_SEC * 1000
+    dim filterPolicy
+
+    // ----------------------------
+    // configure advertizing
+    // ----------------------------
+    // advertise every second
+    advertInterval_ms = 1000
+    filterPolicy = FP_DISABLE_WHITELIST
+
+    print "\nCurrent device name: ", BleGetDeviceName$()
+
+    // configure the GAP service
+    ConfigureGAP()
+
+    if EnableCreateIASvc == 1 then
+        CreateImmAlertSvc()
+    endif
+
+    print "\nCurrent device name: ", BleGetDeviceName$()
+
+    if BleAdvertStart(ADV_IND, peerAdr$, advertInterval_ms, advertTimeout_ms, filterPolicy) == 0 then
+        print "\nAdvert successful!"
+    else
+        print "\nAdvert not successful."
+    endif
+
+endsub
+
+////
+//// ReadFromUart()
+////
+function ReadFromUart()
+
+endFuncVal = 1
+
+len = uartRead(uartRxStr$)
+
+if strcmp(uartRxStr$, termStr$) == 0 then
+    print "\nEnding program execution."
+    endFuncVal = 0
+elseif strcmp(uartRxStr$, "0\r") == 0 then
+    print "\nWill not create Immediate Alert Service"
+    EnableCreateIASvc = 0
+    StartBle()
+elseif strcmp(uartRxStr$, "1\r") == 0 then
+    print "\nCreating Immediate Alert Service"
+    EnableCreateIASvc = 1
+    StartBle()
+endif
+
+uartRxStr$ = ""     // reset the variable
+
+endfunc endFuncVal
+
+////
 //// main()
 ////
 
-dim peerAdr$
-dim advertInterval_ms
-dim advertTimeout_ms : advertTimeout_ms = ADVERT_TMOUT_SEC * 1000
-dim filterPolicy
-
-// ----------------------------
-// configure advertizing
-// ----------------------------
-// advertise every second
-advertInterval_ms = 1000
-filterPolicy = FP_DISABLE_WHITELIST
-
-print "\ngetting bond info..."
-
-dim addr$, extraInfo, i, numDevices
-
-numDevices = SYSINFO(2012)
-print "\nNumber of bonded devices:", numDevices
-
-for i=0 to (numDevices-1)
-    if BleBondMngrGetInfo(i, addr$, extraInfo)==0 then
-        dim hexStr$
-
-        hexStr$ = strhexize$(addr$)
-
-        print "\n\tMAC (straight):", addr$
-        print "\n\tMAC:", hexStr$
-        print "\n\tExtra info:", extraInfo
-    else
-        print "\nUnable to get Bond info"
-    endif
-next
-
-print "\nCurrent device name: ", BleGetDeviceName$()
-
-// configure the GAP service
-ConfigureGAP()
-
-print "\nCurrent device name: ", BleGetDeviceName$()
-
-// Immediate Alert Service
-dim IASUuid16
-dim IAS_ID
-IAS_ID = 0x1802
-
-// get handle to immediate alert service
-IASUuid16 = BLEHandleUuid16(IAS_ID)
-
-print "\nIAS 128-bit UUID:", INTEGER.H'IASUuid16
-
-res = BLEServiceNew(BLESVC_PRIMARY, IASUuid16, immAlertSvc)
-
-if res == 0 then
-    print "\nCreated the ImmediateAlert service!"
-else
-    print "\nUnable to create the ImmediateAlert service"
-endif
-
-dim mdVal
-
-mdVal = BleAttrMetadata(1, 1, 1, 0, res)
-
-if res == 0 then
-    print "\nBleAttrMetadata returned a success code."
-else
-    print "\nBleAttrMetadata did not work!", integer.H'res
-endif
-
-res = BleCharNew(6, BleHandleUuid16(0x2A06), mdVal, 0, 0)
-
-if res == 0 then
-    print "\nSuccessfully created a new characteristic for IAS!"
-else
-    print "\nUnable to create a new characteristic."
-    print "\nReturn code: ", integer.H'res
-endif
-
-alertLevel$ = "\00"   // no alert by default
-
-res = BleCharCommit(immAlertSvc, alertLevel$, alertLevelHandle)
-
-if res == 0 then
-    print "\nSuccessfully committed immediate alert characteristic"
-else
-    print "\nUnable to commit IAS characteristic"
-    print "\nReturn code: ", integer.H'res
-endif
-
-
-if BleAdvertStart(ADV_IND, peerAdr$, advertInterval_ms, advertTimeout_ms, filterPolicy) == 0 then
-    print "\nAdvert successful!"
-else
-    print "\nAdvert not successful."
-endif
+// print "\ngetting bond info..."
+//
+// dim addr$, extraInfo, i, numDevices
+//
+// numDevices = SYSINFO(2012)
+// print "\nNumber of bonded devices:", numDevices
+//
+// for i=0 to (numDevices-1)
+//     if BleBondMngrGetInfo(i, addr$, extraInfo)==0 then
+//         dim hexStr$
+//
+//         hexStr$ = strhexize$(addr$)
+//
+//         print "\n\tMAC (straight):", addr$
+//         print "\n\tMAC:", hexStr$
+//         print "\n\tExtra info:", extraInfo
+//     else
+//         print "\nUnable to get Bond info"
+//     endif
+// next
 
 // set up event handlers
 onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
 onevent EVBLEMSG            call HandleBleMsg
-onevent EVTMR0              call KillProgram
+onevent EVUARTRX            call HandleUartRx
 onevent EVTMR1              call ForceDisconnect
 onevent EVTMR2              call TriggerAlert
-
-// start program timeout timer if enabled
-if ENABLE_PROG_TMOUT == 1 then
-    // start timer #0: 45s, 1-shot timer (will end program)
-    TimerStart(0, PROG_TMOUT_SEC * 1000, 0)
-endif
+onevent EVTMR3              call ReadFromUart
 
 waitevent

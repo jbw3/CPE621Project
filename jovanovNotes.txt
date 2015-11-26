@@ -17,3 +17,7 @@ what methods were used to test the solution?
 - modified project (capacitance sensor)
 - methods to test
 - demo?
+
+
+* Each time I run bleadvert without restarting, another ImmAlert svc is added
+* I restarted (atz), and my ImmAlert svcs were removed

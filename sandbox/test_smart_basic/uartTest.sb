@@ -19,7 +19,7 @@ endfunc 1   // keep processing
 ////
 function HandleTimer0()
     len = uartRead(uartRxStr$)
-    print "\nReceived from uart:", uartRxStr$    
+    print "\nReceived from uart:", uartRxStr$
 
     if strcmp(uartRxStr$, termStr$) == 0 then
         endFuncVal = 0
