@@ -63,70 +63,54 @@ public class BluetoothLeService extends Service
         {
             Log.d("onServicesDiscovered", "start");
 
+            // debugging
+            printServices(gatt);
+
             LinkedList<UUID> services = new LinkedList<>();
             String address = gatt.getDevice().getAddress();
 
-            Log.d("onServicesDiscovered", String.format("found %s services", gatt.getServices().size()));
+            // subscribe to AMDeSS notifications
+            BluetoothGattService gattService = gatt.getService(Constants.UUID_SERVICE_AMDESS_STATUS);
+            if (gattService == null)
+            {
+                Log.w("onServicesDiscovered", "The device does not support the AMDeSS Status service");
+            }
+            else
+            {
+                BluetoothGattCharacteristic armStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE);
+                BluetoothGattCharacteristic alarmStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE);
+                if (armStateChar == null || alarmStateChar == null)
+                {
+                    if (armStateChar == null)
+                    {
+                        Log.w("onServicesDiscovered", "The device does not support the AMDeSS Arm State characteristic");
+                    }
+                    if (alarmStateChar == null)
+                    {
+                        Log.w("onServicesDiscovered", "The device does not support the AMDeSS Alarm State characteristic");
+                    }
+                }
+                else
+                {
+                    Log.d("onServicesDiscovered", "Subscribing to notifications");
+
+                    gatt.setCharacteristicNotification(armStateChar, true);
+                    gatt.setCharacteristicNotification(alarmStateChar, true);
+
+                    setCccdNotificationsEnabled(gatt, armStateChar, true);
+                    setCccdNotificationsEnabled(gatt, alarmStateChar, true);
+                }
+            }
+
+            // get all services the device supports
             for (BluetoothGattService service : gatt.getServices())
             {
                 // add service
                 UUID id = service.getUuid();
                 services.add(id);
-
-                // debugging
-                String serviceName = Constants.GATT_SERVICE_NAMES.get(id);
-                if (serviceName == null)
-                {
-                    serviceName = "?";
-                }
-                Log.d("onServicesDiscovered", String.format("%s (%s)",
-                        id.toString(),
-                        serviceName));
-
-                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics())
-                {
-                    UUID charId = characteristic.getUuid();
-
-                    // subscribe to AMDeSS notifications
-                    if (id.equals(Constants.UUID_SERVICE_AMDESS_STATUS))
-                    {
-                        if (charId.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE) || charId.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
-                        {
-                            Log.d("onServicesDiscovered", "Setting notification");
-                            gatt.setCharacteristicNotification(characteristic, true);
-                        }
-                    }
-
-                    // debugging
-                    String charName = Constants.GATT_CHARACTERISTIC_NAMES.get(charId);
-                    if (charName == null)
-                    {
-                        charName = "?";
-                    }
-                    Log.d("onServicesDiscovered", String.format("  %s (%s)",
-                                                                charId.toString(),
-                                                                charName));
-
-                    for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors())
-                    {
-                        UUID descriptorId = descriptor.getUuid();
-
-                        // debugging
-                        String descriptorName = Constants.GATT_DESCRIPTOR_NAMES.get(descriptorId);
-                        if (descriptorName == null)
-                        {
-                            descriptorName = "?";
-                        }
-                        Log.d("onServicesDiscovered", String.format("    %s (%s)",
-                                                                    descriptorId.toString(),
-                                                                    descriptorName));
-                    }
-                }
             }
 
             setServices(address, services);
-
-            Log.d("onServicesDiscovered", String.format("services: %s", services.size()));
 
             broadcastUpdate(Constants.ACTION_GATT_SERVICES_DISCOVERED, address);
         }
@@ -143,6 +127,77 @@ public class BluetoothLeService extends Service
             else if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
             {
                 onReceiveAlarmState(gatt, characteristic);
+            }
+        }
+
+        private void setCccdNotificationsEnabled(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, boolean enabled)
+        {
+            BluetoothGattDescriptor descriptor = characteristic.getDescriptor(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION);
+            if (descriptor == null)
+            {
+                Log.w("setCccdNtfictnsEnabled", String.format("Characteristic %s does not have CCCD", characteristic.getUuid().toString()));
+                return;
+            }
+
+            byte[] value = descriptor.getValue();
+
+            Log.d("setCccdNtfictnsEnabled", String.format("%x%x", value[1], value[0]));
+
+            byte lower = value[0];
+            if (enabled)
+            {
+                lower |= 0x01;
+            }
+            else
+            {
+                lower &= 0xFE;
+            }
+            value[0] = lower;
+            descriptor.setValue(value);
+
+            gatt.writeDescriptor(descriptor);
+        }
+
+        private void printServices(BluetoothGatt gatt)
+        {
+            Log.d("printServices", String.format("Found %s services", gatt.getServices().size()));
+            for (BluetoothGattService service : gatt.getServices())
+            {
+                UUID serviceId = service.getUuid();
+                String serviceName = Constants.GATT_SERVICE_NAMES.get(serviceId);
+                if (serviceName == null)
+                {
+                    serviceName = "?";
+                }
+                Log.d("printServices", String.format("%s (%s)",
+                        serviceId.toString(),
+                        serviceName));
+
+                for (BluetoothGattCharacteristic characteristic : service.getCharacteristics())
+                {
+                    UUID charId = characteristic.getUuid();
+                    String charName = Constants.GATT_CHARACTERISTIC_NAMES.get(charId);
+                    if (charName == null)
+                    {
+                        charName = "?";
+                    }
+                    Log.d("printServices", String.format("  %s (%s)",
+                            charId.toString(),
+                            charName));
+
+                    for (BluetoothGattDescriptor descriptor : characteristic.getDescriptors())
+                    {
+                        UUID descriptorId = descriptor.getUuid();
+                        String descriptorName = Constants.GATT_DESCRIPTOR_NAMES.get(descriptorId);
+                        if (descriptorName == null)
+                        {
+                            descriptorName = "?";
+                        }
+                        Log.d("printServices", String.format("    %s (%s)",
+                                descriptorId.toString(),
+                                descriptorName));
+                    }
+                }
             }
         }
     }

@@ -58,11 +58,11 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Disarmed"
-        android:textSize="10pt"
+        android:textSize="18pt"
         android:id="@+id/armStatusTextView"
         android:layout_below="@id/connectionStatusTextView"
-        android:layout_alignParentRight="true"
-        android:layout_marginTop="8dp"/>
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="10dp"/>
 
     <Button
         android:layout_width="fill_parent"

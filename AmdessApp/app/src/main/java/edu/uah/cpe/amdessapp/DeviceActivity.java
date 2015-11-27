@@ -127,8 +127,9 @@ public class DeviceActivity extends AppCompatActivity
         {
             Log.w("syncWithInfo", "info is null!!!");
             connectionStatusTextView.setText("Disconnected");
-            connectionStatusTextView.setTextColor(Constants.DISCONNECTED_COLOR);
+            connectionStatusTextView.setTextColor(Constants.RED_COLOR);
             armedStatusTextView.setText("Disarmed");
+            armedStatusTextView.setTextColor(Constants.GREEN_COLOR);
             alarmTextView.setText("");
             servicesTextView.setText("Services:\n");
             return;
@@ -141,30 +142,34 @@ public class DeviceActivity extends AppCompatActivity
         {
             Log.d("syncWithInfo", "Connected");
             connectionStatus = "Connected";
-            color = Constants.CONNECTED_COLOR;
+            color = Constants.GREEN_COLOR;
         }
         else
         {
             Log.d("syncWithInfo", "Disconnected");
             connectionStatus = "Disconnected";
-            color = Constants.DISCONNECTED_COLOR;
+            color = Constants.RED_COLOR;
         }
         connectionStatusTextView.setText(connectionStatus);
         connectionStatusTextView.setTextColor(color);
 
         // update armed status
         String armedStatus;
+        int armedColor;
         if (info.armed)
         {
             Log.d("syncWithInfo", "Armed");
             armedStatus = "Armed";
+            armedColor = Constants.RED_COLOR;
         }
         else
         {
             Log.d("syncWithInfo", "Disarmed");
             armedStatus = "Disarmed";
+            armedColor = Constants.GREEN_COLOR;
         }
         armedStatusTextView.setText(armedStatus);
+        armedStatusTextView.setTextColor(armedColor);
 
         // update alarm state
         String alarmState = "";
