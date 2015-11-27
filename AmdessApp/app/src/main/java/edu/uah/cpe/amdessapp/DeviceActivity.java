@@ -43,6 +43,7 @@ public class DeviceActivity extends AppCompatActivity
     private IntentFilter intentFilter = new IntentFilter();
     private TextView connectionStatusTextView;
     private TextView armedStatusTextView;
+    private TextView alarmTextView;
     private TextView servicesTextView;
 
     @Override
@@ -53,6 +54,7 @@ public class DeviceActivity extends AppCompatActivity
 
         connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
         armedStatusTextView = (TextView) findViewById(R.id.armStatusTextView);
+        alarmTextView = (TextView) findViewById(R.id.alarmTextView);
         servicesTextView = (TextView) findViewById(R.id.servicesTextView);
 
         ActionBar actionBar = getActionBar();
@@ -127,6 +129,7 @@ public class DeviceActivity extends AppCompatActivity
             connectionStatusTextView.setText("Disconnected");
             connectionStatusTextView.setTextColor(Constants.DISCONNECTED_COLOR);
             armedStatusTextView.setText("Disarmed");
+            alarmTextView.setText("");
             servicesTextView.setText("Services:\n");
             return;
         }
@@ -162,6 +165,14 @@ public class DeviceActivity extends AppCompatActivity
             armedStatus = "Disarmed";
         }
         armedStatusTextView.setText(armedStatus);
+
+        // update alarm state
+        String alarmState = "";
+        if (info.alarming)
+        {
+            alarmState = "Alarm!";
+        }
+        alarmTextView.setText(alarmState);
 
         // update services
         String services = "Services:\n";
