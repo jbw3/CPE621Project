@@ -26,12 +26,47 @@ what methods were used to test the solution?
 CURRENT PLAN:
 ////////////////////////////////////////////////////////////////////////////////
 
-Arm state characteristic - 0xCC33
-(Read/write)
-0 – disarmed
-1 – armed
+Arm state characteristic - 0xFEED
+    - [characteristic attribute]
+    - VALUE attribute
+        - (Read/Write)
+        - 0 - Disarmed, 1 - Armed
+    - CCCD attribute
+        - bit n: 0 - notify off, 1 - notify on
 
-Alarm state characteristic
-(Read/Notify if armed)
-0 – No alarm
-1 – Alarm
+Alarm state characteristic - 0xFACE
+    - [characteristic attribute]
+    - VALUE attribute
+        - (Read/Write/Notify if armed)
+        - 0 – No alarm
+        - 1 – Alarm
+    - CCCD attribute
+        - bit n: 0 - notify off (disarmed) 1 - notify on (armed)
+
+SYSTEM ACTIONS:
+
+1) Connect
+
+1.b) Setup
+
+    1. App writes CCCD values as desired...
+
+2) Arm
+    1. App writes to Arm state char.
+        - Device notifies if CCCD set
+
+3) Disarm a Device
+
+    1. App writes Arm state char. (to disarm)
+
+4) Turn Alarm On
+
+    1. On detection of alarm condition...
+        - device writes Alarm state char.
+        - if CCCD set, device notifies App of alarm state (1x)
+        - device performs alarm state actions, if any...
+
+5) Turn Alarm Off
+
+    1. App may disarm the device
+    2. OR, App writes Alarm state char. (to turn off alarm, but remain armed)

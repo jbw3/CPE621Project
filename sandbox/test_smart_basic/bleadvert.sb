@@ -189,20 +189,30 @@ endsub
 sub CreateAMDeSSService()
 
 dim amdessMDVal
-dim uuid$
-dim armState$
-dim hUuidCustom
+//dim uuid$
+dim armState$, usrDesc$
+dim hUuidCustom, mdUsrDsc
 
+usrDesc$ = "Arm state (FEED)"
 armState$ = "\00"   // no alert by default
 
 // create a custom uuid for AMDeSS service
-uuid$ = "ced9d91366924a1287d56f2764762b2a"
-uuid$ = StrDehexize$(uuid$)
-hUuidCustom = BleHandleUuid128(uuid$)
+//uuid$ = "ced9d91366924a1287d56f2764762b2a"
+//uuid$ = StrDehexize$(uuid$)
+hUuidCustom = BleHandleUuid16(0xACDC)
 res = BLEServiceNew(BLESVC_PRIMARY, hUuidCustom, amdessSvc)
 amdessMDVal = BleAttrMetadata(1, 1, 1, 0, res)
-res = BleCharNew(6, BleHandleUuid16(0xCC33), amdessMDVal, 0, 0)
+
+// alarm state characteristic
+// 0x12 - read, notify
+res = BleCharNew(0x12, BleHandleUuid16(0xFACE), amdessMDVal, 0, 0)
 res = BleCharCommit(amdessSvc, armState$, armStateHandle)
+
+// alarm state characteristic
+res = BleCharNew()
+// mdUsrDsc = BleAttrMetaData(1,1,20,0,res)
+// res = BleCharDescUserDesc(usrDesc$,mdUsrDsc)
+
 
 endsub
 
