@@ -7,6 +7,9 @@ import java.util.UUID;
 
 public class Constants
 {
+    public static final String ACTION_DEVICE_ARM =
+            "edu.uah.cpe.amdessapp.ACTION_DEVICE_ARM";
+
     public static final String ACTION_DEVICE_ALARM =
             "edu.uah.cpe.amdessapp.ACTION_DEVICE_ALARM";
 
@@ -38,6 +41,9 @@ public class Constants
     public static final UUID UUID_SERVICE_HEALTH_THERMOMETER               = UUID.fromString("00001809-0000-1000-8000-00805F9B34FB");
     public static final UUID UUID_SERVICE_IMMEDIATE_ALERT                  = UUID.fromString("00001802-0000-1000-8000-00805F9B34FB");
 
+    // custom
+    public static final UUID UUID_SERVICE_AMDESS_STATUS                    = UUID.fromString("0000ACDC-0000-1000-8000-00805F9B34FB");
+
     public static final HashMap<UUID, String> GATT_SERVICE_NAMES;
     static
     {
@@ -55,6 +61,8 @@ public class Constants
         GATT_SERVICE_NAMES.put(UUID_SERVICE_GLUCOSE, "Glucose");
         GATT_SERVICE_NAMES.put(UUID_SERVICE_HEALTH_THERMOMETER, "Health Thermometer");
         GATT_SERVICE_NAMES.put(UUID_SERVICE_IMMEDIATE_ALERT, "Immediate Alert");
+
+        GATT_SERVICE_NAMES.put(UUID_SERVICE_AMDESS_STATUS, "AMDeSS Status");
     }
 
     public static final UUID UUID_CHARACTERISTIC_ALERT_LEVEL               = UUID.fromString("00002A06-0000-1000-8000-00805F9B34FB");
@@ -76,6 +84,10 @@ public class Constants
     public static final UUID UUID_CHARACTERISTIC_GLUCOSE_FEATURE           = UUID.fromString("00002A51-0000-1000-8000-00805F9B34FB");
     public static final UUID UUID_CHARACTERISTIC_GLUCOSE_MEASUREMENT       = UUID.fromString("00002A18-0000-1000-8000-00805F9B34FB");
     public static final UUID UUID_CHARACTERISTIC_GLUCOSE_MEASUREMENT_CONTEXT = UUID.fromString("00002A34-0000-1000-8000-00805F9B34FB");
+
+    // custom
+    public static final UUID UUID_CHARACTERISTIC_AMDESS_ARM_STATE          = UUID.fromString("0000FEED-0000-1000-8000-00805F9B34FB");
+    public static final UUID UUID_CHARACTERISTIC_AMDESS_ALARM_STATE        = UUID.fromString("0000FACE-0000-1000-8000-00805F9B34FB");
 
     public static final HashMap<UUID, String> GATT_CHARACTERISTIC_NAMES;
     static
@@ -100,6 +112,9 @@ public class Constants
         GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_GLUCOSE_FEATURE, "Glucose Feature");
         GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_GLUCOSE_MEASUREMENT, "Glucose Measurement");
         GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_GLUCOSE_MEASUREMENT_CONTEXT, "Glucose Measurement Context");
+
+        GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_AMDESS_ARM_STATE, "AMDeSS Arm State");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_AMDESS_ALARM_STATE, "AMDeSS Alarm State");
     }
 
     public static final UUID UUID_DESCRIPTOR_CHARACTERISTIC_AGGREGATE_FORMAT = UUID.fromString("00002905-0000-1000-8000-00805F9B34FB");

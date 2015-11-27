@@ -24,6 +24,8 @@ public class BluetoothLeService extends Service
     public class DeviceInfo
     {
         public boolean connected = false;
+        public boolean armed = false;
+        public boolean alarming = false;
         public LinkedList<UUID> services = new LinkedList<>();
     }
 
@@ -85,10 +87,14 @@ public class BluetoothLeService extends Service
                 {
                     UUID charId = characteristic.getUuid();
 
-                    if (id.equals(Constants.UUID_SERVICE_IMMEDIATE_ALERT) && charId.equals(Constants.UUID_CHARACTERISTIC_ALERT_LEVEL))
+                    // subscribe to AMDeSS notifications
+                    if (id.equals(Constants.UUID_SERVICE_AMDESS_STATUS))
                     {
-                        Log.d("onServicesDiscovered", "Setting notification");
-                        gatt.setCharacteristicNotification(characteristic, true);
+                        if (charId.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE) || charId.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
+                        {
+                            Log.d("onServicesDiscovered", "Setting notification");
+                            gatt.setCharacteristicNotification(characteristic, true);
+                        }
                     }
 
                     // debugging
@@ -128,11 +134,15 @@ public class BluetoothLeService extends Service
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
         {
-            Log.d("onCharacteristicChanged", "start");
+            Log.d("onCharacteristicChanged", "start...");
 
-            if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_ALERT_LEVEL))
+            if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE))
             {
-                onReceiveImmediateAlert(gatt, characteristic);
+                onReceiveArmState(gatt, characteristic);
+            }
+            else if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
+            {
+                onReceiveAlarmState(gatt, characteristic);
             }
         }
     }
@@ -147,6 +157,10 @@ public class BluetoothLeService extends Service
     }
 
     private static final int NOTIFICATION_ID = 123;
+    private static final int ARM_STATE_DISARMED = 0;
+    private static final int ARM_STATE_ARMED = 1;
+    private static final int ALARM_STATE_NO_ALARM = 0;
+    private static final int ALARM_STATE_ALARM = 1;
     private final long[] VIBRATE_PATTERN = {0, 400, 100, 400, 100, 400, 100, 400};
     private final BtGattCallback gattCallback = new BtGattCallback();
     private BleBinder bleBinder = new BleBinder();
@@ -195,6 +209,40 @@ public class BluetoothLeService extends Service
         infoMap.put(address, info);
     }
 
+    private void setArmStatus(String address, boolean armed)
+    {
+        // get the current info for the device
+        DeviceInfo info = infoMap.get(address);
+
+        // if the info does not exist, create it
+        if (info == null)
+        {
+            info = new DeviceInfo();
+        }
+
+        info.armed = armed;
+
+        // update the info in the map
+        infoMap.put(address, info);
+    }
+
+    private void setAlarmStatus(String address, boolean alarming)
+    {
+        // get the current info for the device
+        DeviceInfo info = infoMap.get(address);
+
+        // if the info does not exist, create it
+        if (info == null)
+        {
+            info = new DeviceInfo();
+        }
+
+        info.alarming = alarming;
+
+        // update the info in the map
+        infoMap.put(address, info);
+    }
+
     private void setServices(String address, LinkedList<UUID> services)
     {
         // get the current info for the device
@@ -212,30 +260,81 @@ public class BluetoothLeService extends Service
         infoMap.put(address, info);
     }
 
-    private void onReceiveImmediateAlert(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
+    private void onReceiveArmState(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
     {
-        Log.d("onReceiveImmediateAlert", "Received immediate alert");
+        Log.d("onReceiveArmState", "start...");
 
-        String name = gatt.getDevice().getName();
         String address = gatt.getDevice().getAddress();
+
+        Log.d("onReceiveArmState", String.format("Length: %s", characteristic.getValue().length));
+
+        // read arm state from characteristic
+        int armState = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+
+        // update arm state
+        if (armState != ARM_STATE_DISARMED && armState != ARM_STATE_ARMED)
+        {
+            Log.w("onReceiveArmState", "Caleb sent an invalid arm state!!!");
+        }
+        else
+        {
+            setArmStatus(address, (armState == ARM_STATE_ARMED));
+
+            // send broadcast
+            broadcastUpdate(Constants.ACTION_DEVICE_ARM, address);
+        }
+    }
+
+    private void onReceiveAlarmState(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
+    {
+        Log.d("onReceiveAlarmState", "start...");
+
+        String address = gatt.getDevice().getAddress();
+
+        Log.d("onReceiveAlarmState", String.format("Length: %s", characteristic.getValue().length));
+
+        // read alarm state from characteristic
+        int alarmState = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+
+        // update alarm state
+        if (alarmState != ALARM_STATE_NO_ALARM && alarmState != ALARM_STATE_ALARM)
+        {
+            Log.w("onReceiveAlarmState", "Caleb sent an invalid alarm state!!!");
+        }
+        else
+        {
+            boolean alarming = (alarmState == ALARM_STATE_ALARM);
+            setAlarmStatus(address, alarming);
+
+            // send broadcast
+            broadcastUpdate(Constants.ACTION_DEVICE_ALARM, address);
+
+            // send notification if alarming
+            if (alarming)
+            {
+                sendAlarmNotification(gatt.getDevice());
+            }
+        }
+    }
+
+    private void sendAlarmNotification(BluetoothDevice device)
+    {
+        String name = device.getName();
+        String address = device.getAddress();
         if (name == null)
         {
             name = address;
         }
         String text = String.format("Alarm from %s", name);
 
-        // send broadcast
-        broadcastUpdate(Constants.ACTION_DEVICE_ALARM, address);
-
-        // send notification
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         Notification.Builder builder =
                 new Notification.Builder(this)
-                    .setSmallIcon(android.R.drawable.ic_dialog_alert)
-                    .setContentTitle("Alarm!")
-                    .setContentText(text)
-                    .setVibrate(VIBRATE_PATTERN);
+                        .setSmallIcon(android.R.drawable.ic_dialog_alert)
+                        .setContentTitle("Alarm!")
+                        .setContentText(text)
+                        .setVibrate(VIBRATE_PATTERN);
         Notification notification = builder.build();
         notificationManager.notify(NOTIFICATION_ID, notification);
     }

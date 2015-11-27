@@ -42,6 +42,7 @@ public class DeviceActivity extends AppCompatActivity
     private BluetoothInfoReceiver infoReceiver = new BluetoothInfoReceiver();
     private IntentFilter intentFilter = new IntentFilter();
     private TextView connectionStatusTextView;
+    private TextView armedStatusTextView;
     private TextView servicesTextView;
 
     @Override
@@ -51,6 +52,7 @@ public class DeviceActivity extends AppCompatActivity
         setContentView(R.layout.activity_device);
 
         connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
+        armedStatusTextView = (TextView) findViewById(R.id.armStatusTextView);
         servicesTextView = (TextView) findViewById(R.id.servicesTextView);
 
         ActionBar actionBar = getActionBar();
@@ -63,6 +65,8 @@ public class DeviceActivity extends AppCompatActivity
         intentFilter.addAction(Constants.ACTION_GATT_CONNECTED);
         intentFilter.addAction(Constants.ACTION_GATT_DISCONNECTED);
         intentFilter.addAction(Constants.ACTION_GATT_SERVICES_DISCOVERED);
+        intentFilter.addAction(Constants.ACTION_DEVICE_ARM);
+        intentFilter.addAction(Constants.ACTION_DEVICE_ALARM);
     }
 
     @Override
@@ -122,6 +126,7 @@ public class DeviceActivity extends AppCompatActivity
             Log.w("syncWithInfo", "info is null!!!");
             connectionStatusTextView.setText("Disconnected");
             connectionStatusTextView.setTextColor(Constants.DISCONNECTED_COLOR);
+            armedStatusTextView.setText("Disarmed");
             servicesTextView.setText("Services:\n");
             return;
         }
@@ -143,6 +148,20 @@ public class DeviceActivity extends AppCompatActivity
         }
         connectionStatusTextView.setText(connectionStatus);
         connectionStatusTextView.setTextColor(color);
+
+        // update armed status
+        String armedStatus;
+        if (info.armed)
+        {
+            Log.d("syncWithInfo", "Armed");
+            armedStatus = "Armed";
+        }
+        else
+        {
+            Log.d("syncWithInfo", "Disarmed");
+            armedStatus = "Disarmed";
+        }
+        armedStatusTextView.setText(armedStatus);
 
         // update services
         String services = "Services:\n";
