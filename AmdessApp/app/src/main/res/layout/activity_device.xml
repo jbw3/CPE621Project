@@ -46,10 +46,34 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Disarmed"
+        android:textSize="10pt"
+        android:id="@+id/armStatusTextView"
+        android:layout_below="@id/connectionStatusTextView"
+        android:layout_alignParentRight="true"
+        android:layout_marginTop="8dp"/>
+
+    <Button
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:text="ARM"
+        android:textSize="10pt"
+        android:textColor="#FFFFFF"
+        android:background="@color/colorArm"
+        android:id="@+id/armButton"
+        android:layout_below="@id/armStatusTextView"
+        android:layout_marginTop="10dp"
+        android:layout_centerInParent="true"
+        android:onClick="onArmDisarmClicked"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Services:\n"
         android:textSize="8pt"
         android:id="@+id/servicesTextView"
-        android:layout_below="@+id/addressTextView"
-        android:layout_marginTop="20dp"
+        android:layout_below="@id/armButton"
+        android:layout_marginTop="15dp"
         android:layout_alignParentStart="true"/>
 </RelativeLayout>

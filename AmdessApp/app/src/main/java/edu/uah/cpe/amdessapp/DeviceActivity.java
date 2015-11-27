@@ -9,6 +9,7 @@ import android.content.IntentFilter;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
 import android.widget.TextView;
 
 import java.util.UUID;
@@ -104,6 +105,11 @@ public class DeviceActivity extends AppCompatActivity
         super.onPause();
 
         unregisterReceiver(infoReceiver);
+    }
+
+    public void onArmDisarmClicked(View v)
+    {
+        Log.d("onArmDisarmClicked", "TODO: Arm/Disarm AMDeSS device");
     }
 
     private void syncWithInfo()
