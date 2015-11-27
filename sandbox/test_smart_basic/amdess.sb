@@ -1,0 +1,103 @@
+#include "ble_defines.sblib"
+
+///////////////////////////////
+// program settings
+#define ALERT_AFTER_SEC 5
+#define ADVERT_TMOUT_SEC 120
+///////////////////////////////
+
+///////////////////////////////
+// Global program variables
+///////////////////////////////
+dim res             // result of operations
+dim endFuncVal      // variable for endfunc
+dim conn            // connection handle
+dim hAmdessSvc       // AMDeSS service handle
+dim hArmStateChar       // ARM STATE characteristic handle
+dim hAlarmState         // ALARM STATE characteristic handle
+dim EnableCreateIASvc
+
+// uart vars
+dim uartRxStr$
+dim uartTermStr$
+dim uartStrLen
+///////////////////////////////
+
+uartTermStr$ = "end\r"  // ends execution
+
+////
+//// Handle BLE Advertizing Timeout
+////
+function HandleBleAdvTimeout()
+    print "\nAdvert timed out."
+endfunc 0
+
+////
+//// Configure BLE GAP service
+////
+sub ConfigureGAP()
+    res = BleGapSvcInit(DEV_NAME, NAME_IS_WR, APPEAR, MIN_CON_INT, MAX_CON_INT, SUPRV_TO, SLAVE_LTCY)
+    if (res == 0) then
+        print "\nGAP service initialized successfully!"
+    else
+        print "\nBleGapSvcInit() failed with a result of ", res
+    endif
+endsub
+
+////
+//// HandleBleMsg()
+///
+function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
+    print "\nmsgId: ", msgId
+    select msgId
+        case 0
+            // received new connection! save connection handle
+            conn = msgCtx
+            TimerStart(2, ALERT_AFTER_SEC * 1000, 0)
+        case 1
+            print "\nConnection lost."
+            exitfunc 0  // we successfully disconnected!
+        case else
+            // do nothing special for now...
+    endselect
+endfunc 1
+
+////
+//// HandleUartRx()
+////
+function HandleUartRx()
+    TimerStart(3,100,0)     // allow enough time for data to reach rx buffer
+endfunc 1
+
+////
+//// CreateAMDeSSService()
+////
+sub CreateAMDeSSService()
+
+dim armStateValueMD, armStateCccdMD
+dim armState$
+dim hUuidAmdess
+dim armStateCharProps
+dim alarmStateCharProps
+
+armState$ = "\00"   // no alert by default
+armStateCharProps =   BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
+alarmStateCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
+
+hUuidAmdess = BleHandleUuid16(0xACDC)
+res = BLEServiceNew(BLE_SVC_PRIMARY, hUuidAmdess, amdessSvc)
+
+// ARM STATE characteristic
+armStateValueMD = BleAttrMetadata(1, 1, 1, 0, res)
+armStateCccdMD = BleAttrMetadata(1, 1, 2, 0, res)
+res = BleCharNew(armStateCharProps, BleHandleUuid16(0xFEED), armStateValueMD, armStateCccdMD, 0)
+res = BleCharCommit(amdessSvc, armState$, armStateHandle)
+
+// ALARM STATE characteristic
+//res = BleCharNew()
+
+endsub
+
+////
+//// main()
+////

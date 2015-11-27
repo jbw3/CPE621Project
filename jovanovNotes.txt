@@ -29,7 +29,7 @@ CURRENT PLAN:
 Arm state characteristic - 0xFEED
     - [characteristic attribute]
     - VALUE attribute
-        - (Read/Write)
+        - (Read/Write/Notify)
         - 0 - Disarmed, 1 - Armed
     - CCCD attribute
         - bit n: 0 - notify off, 1 - notify on
@@ -37,7 +37,7 @@ Arm state characteristic - 0xFEED
 Alarm state characteristic - 0xFACE
     - [characteristic attribute]
     - VALUE attribute
-        - (Read/Write/Notify if armed)
+        - (Read/Write/Notify)
         - 0 – No alarm
         - 1 – Alarm
     - CCCD attribute

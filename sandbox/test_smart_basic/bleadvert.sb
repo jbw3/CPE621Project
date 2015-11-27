@@ -1,11 +1,9 @@
+#include "ble_defines.sblib"
+
 #define ADV_IND 0
 
 // Filter policies
 #define FP_DISABLE_WHITELIST 0
-
-// BLE options
-#define BLESVC_PRIMARY 1
-#define BLESVC_SECONDARY 0
 
 // GAP settings
 #define DEV_NAME "AMDeSS Sensor"
@@ -27,8 +25,9 @@ dim conn            // connection handle
 dim immAlertSvc     // immediate alert service handle
 dim alertLevel$     // alert level value
 dim alertLevelHandle    // alert level characteristic handle
-dim amdessSvc       // AMDeSS service handle
-dim armStateHandle
+dim hAmdessSvc       // AMDeSS service handle
+dim hArmStateChar       // ARM STATE characteristic handle
+dim hAlarmState         // ALARM STATE characteristic handle
 dim EnableCreateIASvc
 
 // uart vars
@@ -46,6 +45,7 @@ endfunc 0
 //// Configure BLE GAP service
 ////
 sub ConfigureGAP()
+
     res = BleGapSvcInit(DEV_NAME, NAME_IS_WR, APPEAR, MIN_CON_INT, MAX_CON_INT, SUPRV_TO, SLAVE_LTCY)
 
     if (res == 0) then
@@ -67,17 +67,15 @@ function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
         case 0
             // received new connection! save connection handle
             conn = msgCtx
-
-            // kick off disconnect timer
-            // timer #1: 1-shot timer (will disconnect)
-            //TimerStart(1, CONN_TMOUT_SEC * 1000, 0)
-            // timer #2: 1-shot timer
             TimerStart(2, ALERT_AFTER_SEC * 1000, 0)
+
         case 1
             print "\nConnection lost."
             exitfunc 0  // we successfully disconnected!
+
         case else
             // do nothing special for now...
+
     endselect
 
 endfunc 1
@@ -101,34 +99,6 @@ function ForceDisconnect()
 endfunc 1
 
 ////
-//// TriggerAlert()
-////
-function TriggerAlert()
-
-    res = BleCharValueRead(alertLevelHandle, alertLevel$)
-
-    if res == 0 then
-        print "\n\nInitial alert level:", alertLevel$
-    else
-        print "\nError reading alert level", res
-    endif
-
-    alertLevel$ = "\01"     // mild alert level
-
-    res = BleCharValueWrite(alertLevelHandle, alertLevel$)
-
-    if res == 0 then
-        print "\nWrote the alert level successfully."
-    else
-        print "\nError writing alert level", res
-    endif
-
-    res = BleCharValueRead(alertLevelHandle, alertLevel$)
-    print "\n\nNew alert level:", alertLevel$
-
-endfunc 1
-
-////
 //// CreateImmAlertSvc()
 ////
 sub CreateImmAlertSvc()
@@ -143,7 +113,7 @@ sub CreateImmAlertSvc()
 
     print "\nIAS 128-bit UUID:", INTEGER.H'IASUuid16
 
-    res = BLEServiceNew(BLESVC_PRIMARY, IASUuid16, immAlertSvc)
+    res = BLEServiceNew(BLE_SVC_PRIMARY, IASUuid16, immAlertSvc)
 
     if res == 0 then
         print "\nCreated the ImmediateAlert service!"
@@ -188,31 +158,27 @@ endsub
 ////
 sub CreateAMDeSSService()
 
-dim amdessMDVal
-//dim uuid$
-dim armState$, usrDesc$
-dim hUuidCustom, mdUsrDsc
+dim armStateValueMD, armStateCccdMD
+dim armState$
+dim hUuidAmdess
+dim armStateCharProps
+dim alarmStateCharProps
 
-usrDesc$ = "Arm state (FEED)"
 armState$ = "\00"   // no alert by default
+armStateCharProps =   BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
+alarmStateCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
 
-// create a custom uuid for AMDeSS service
-//uuid$ = "ced9d91366924a1287d56f2764762b2a"
-//uuid$ = StrDehexize$(uuid$)
-hUuidCustom = BleHandleUuid16(0xACDC)
-res = BLEServiceNew(BLESVC_PRIMARY, hUuidCustom, amdessSvc)
-amdessMDVal = BleAttrMetadata(1, 1, 1, 0, res)
+hUuidAmdess = BleHandleUuid16(0xACDC)
+res = BLEServiceNew(BLE_SVC_PRIMARY, hUuidAmdess, amdessSvc)
 
-// alarm state characteristic
-// 0x12 - read, notify
-res = BleCharNew(0x12, BleHandleUuid16(0xFACE), amdessMDVal, 0, 0)
+// ARM STATE characteristic
+armStateValueMD = BleAttrMetadata(1, 1, 1, 0, res)
+armStateCccdMD = BleAttrMetadata(1, 1, 2, 0, res)
+res = BleCharNew(armStateCharProps, BleHandleUuid16(0xFEED), armStateValueMD, armStateCccdMD, 0)
 res = BleCharCommit(amdessSvc, armState$, armStateHandle)
 
-// alarm state characteristic
-res = BleCharNew()
-// mdUsrDsc = BleAttrMetaData(1,1,20,0,res)
-// res = BleCharDescUserDesc(usrDesc$,mdUsrDsc)
-
+// ALARM STATE characteristic
+//res = BleCharNew()
 
 endsub
 

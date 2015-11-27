@@ -1,0 +1,59 @@
+// amdessServiceLib.sblib
+
+#include "ble_defines.sblib"
+
+dim res2
+
+////
+//// CreateArmStateCharacteristic()
+////
+sub CreateArmStateChar(byRef amdessSvcHandle, byRef armStateCharHandle)
+
+dim armStateValueMD, armStateCccdMD
+dim armStateCharProps
+dim armState$
+
+armState$ = "\00"   // no alert by default
+armStateCharProps =   BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
+
+// ARM STATE characteristic
+armStateValueMD = BleAttrMetadata(1, 1, 1, 0, res2)
+armStateCccdMD = BleAttrMetadata(1, 1, 2, 0, res2)
+res2 = BleCharNew(armStateCharProps, BleHandleUuid16(0xFEED), armStateValueMD, armStateCccdMD, 0)
+res2 = BleCharCommit(amdessSvcHandle, armState$, armStateCharHandle)
+
+endsub
+
+////
+//// CreateAlarmStateChar()
+////
+sub CreateAlarmStateChar(byRef amdessSvcHandle, byRef alarmStateCharHandle)
+
+dim alarmStateValueMD, alarmStateCccdMD
+dim alarmStateCharProps
+dim alarmState$
+
+alarmState$ = "\00"   // not alarming by default
+alarmStateCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
+
+// ARM STATE characteristic
+alarmStateValueMD = BleAttrMetadata(1, 1, 1, 0, res2)
+alarmStateCccdMD = BleAttrMetadata(1, 1, 2, 0, res2)
+res2 = BleCharNew(alarmStateCharProps, BleHandleUuid16(0xFACE), alarmStateValueMD, alarmStateCccdMD, 0)
+res2 = BleCharCommit(amdessSvcHandle, alarmState$, alarmStateCharHandle)
+
+endsub
+
+////
+//// CreateAmdessService()
+////
+sub CreateAmdessService(byRef amdessSvcHandle, byRef armStateCharHandle, byRef alarmStateCharHandle)
+
+dim hUuidAmdess
+
+hUuidAmdess = BleHandleUuid16(0xACDC)
+res2 = BLEServiceNew(BLE_SVC_PRIMARY, hUuidAmdess, amdessSvcHandle)
+CreateArmStateChar(amdessSvcHandle, armStateCharHandle)
+CreateAlarmStateChar(amdessSvcHandle, alarmStateCharHandle)
+
+endsub

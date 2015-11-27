@@ -1,0 +1,148 @@
+#include "amdessServiceLib.sblib"
+
+///////////////////////////////
+// program settings
+#define ALERT_AFTER_SEC 5
+#define ADVERT_TMOUT_SEC 120
+///////////////////////////////
+
+///////////////////////////////
+// GAP settings
+///////////////////////////////
+#define DEV_NAME "AMDeSS Sensor"
+#define NAME_IS_WR 0                // name is writable
+#define APPEAR 0                    // unknown
+#define MIN_CON_INT 500000            // min connection interval (microseconds)
+#define MAX_CON_INT 1000000         // max connection interval (microseconds)
+#define SUPRV_TO 4000000
+#define SLAVE_LTCY 0
+///////////////////////////////
+
+///////////////////////////////
+// Global program variables
+///////////////////////////////
+dim res             // result of operations
+dim endFuncVal      // variable for endfunc
+dim conn            // connection handle
+dim hAmdessSvc       // AMDeSS service handle
+dim hArmStateChar       // ARM STATE characteristic handle
+dim hAlarmStateChar     // ALARM STATE characteristic handle
+dim EnableCreateIASvc
+
+// uart vars
+dim uartRxStr$
+dim uartTermStr$
+dim uartStrLen
+///////////////////////////////
+
+uartTermStr$ = "end\r"  // ends execution
+
+////
+//// Handle BLE Advertizing Timeout
+////
+function HandleBleAdvTimeout()
+    print "\nAdvert timed out."
+endfunc 0
+
+////
+//// Configure BLE GAP service
+////
+sub ConfigureGAP()
+    res = BleGapSvcInit(DEV_NAME, NAME_IS_WR, APPEAR, MIN_CON_INT, MAX_CON_INT, SUPRV_TO, SLAVE_LTCY)
+    if (res == 0) then
+        print "\nGAP service initialized successfully!"
+    else
+        print "\nBleGapSvcInit() failed with a result of ", res
+    endif
+endsub
+
+////
+//// HandleBleMsg()
+///
+function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
+    print "\nmsgId: ", msgId
+    select msgId
+        case 0
+            // received new connection! save connection handle
+            conn = msgCtx
+            TimerStart(2, ALERT_AFTER_SEC * 1000, 0)
+        case 1
+            print "\nConnection lost."
+            exitfunc 0  // we successfully disconnected!
+        case else
+            // do nothing special for now...
+    endselect
+endfunc 1
+
+////
+//// HandleUartRx()
+////
+function HandleUartRx()
+    TimerStart(3,100,0)     // allow enough time for data to reach rx buffer
+endfunc 1
+
+////
+//// StartBle()
+////
+sub StartBle()
+
+    dim peerAdr$
+    dim advertInterval_ms : advertInterval_ms = 1000    // advertise every second
+    dim advertTimeout_ms : advertTimeout_ms = ADVERT_TMOUT_SEC * 1000
+
+    print "\nCurrent device name: ", BleGetDeviceName$()
+
+    // configure the GAP service
+    ConfigureGAP()
+
+    if EnableCreateIASvc == 1 then
+        CreateAmdessService(hAmdessSvc, hArmStateChar, hAlarmStateChar)
+    endif
+
+    print "\nCurrent device name: ", BleGetDeviceName$()
+
+    if BleAdvertStart(BLE_ADV_INDIRECT, peerAdr$, advertInterval_ms, advertTimeout_ms, BLE_FP_DISABLE_WHITELIST) == 0 then
+        print "\nStarted advertising..."
+    endif
+
+endsub
+
+////
+//// ReadFromUart()
+////
+function ReadFromUart()
+
+endFuncVal = 1
+
+uartStrLen = uartRead(uartRxStr$)
+
+if strcmp(uartRxStr$, uartTermStr$) == 0 then
+    print "\nEnding program execution."
+    endFuncVal = 0
+elseif strcmp(uartRxStr$, "0\r") == 0 then
+    print "\nWill not create Immediate Alert Service"
+    EnableCreateIASvc = 0
+    StartBle()
+elseif strcmp(uartRxStr$, "1\r") == 0 then
+    print "\nCreating Immediate Alert Service"
+    EnableCreateIASvc = 1
+    StartBle()
+endif
+
+uartRxStr$ = ""     // reset the variable
+
+endfunc endFuncVal
+
+////
+//// main()
+////
+
+// set up event handlers
+onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
+onevent EVBLEMSG            call HandleBleMsg
+onevent EVUARTRX            call HandleUartRx
+onevent EVTMR3              call ReadFromUart
+
+print "\nEnter '1' to create AMDeSS service, '0' to just start advertising."
+
+waitevent

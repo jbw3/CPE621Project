@@ -1,0 +1,26 @@
+
+// -------------------------------------------------
+// BLE Service Options
+// -------------------------------------------------
+#define BLE_SVC_PRIMARY 1
+#define BLE_SVC_SECONDARY 0
+
+// -------------------------------------------------
+// BLE Advertising
+// -------------------------------------------------
+#define BLE_ADV_INDIRECT 0
+
+// filter policies
+#define BLE_FP_DISABLE_WHITELIST 0
+
+// -------------------------------------------------
+// characteristic properties (can be OR-ed together)
+// -------------------------------------------------
+#define BLE_CHAR_PROP_BROADCAST             0x01
+#define BLE_CHAR_PROP_READ                  0x02
+#define BLE_CHAR_PROP_WRITE_WO_RESPONSE     0x04
+#define BLE_CHAR_PROP_WRITE                 0x08
+#define BLE_CHAR_PROP_NOTIFY                0x10
+#define BLE_CHAR_PROP_INDICATE              0x20
+#define BLE_CHAR_PROP_SIGNED_WRITES         0x30
+#define BLE_CHAR_PROP_RELIABLE_WRITES       0x40
