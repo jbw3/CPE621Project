@@ -21,3 +21,17 @@ what methods were used to test the solution?
 
 * Each time I run bleadvert without restarting, another ImmAlert svc is added
 * I restarted (atz), and my ImmAlert svcs were removed
+
+////////////////////////////////////////////////////////////////////////////////
+CURRENT PLAN:
+////////////////////////////////////////////////////////////////////////////////
+
+Arm state characteristic - 0xCC33
+(Read/write)
+0 – disarmed
+1 – armed
+
+Alarm state characteristic
+(Read/Notify if armed)
+0 – No alarm
+1 – Alarm
