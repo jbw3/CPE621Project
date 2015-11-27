@@ -36,7 +36,7 @@ dim alarmState$
 alarmState$ = "\00"   // not alarming by default
 alarmStateCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
 
-// ARM STATE characteristic
+// ALARM STATE characteristic
 alarmStateValueMD = BleAttrMetadata(1, 1, 1, 0, res2)
 alarmStateCccdMD = BleAttrMetadata(1, 1, 2, 0, res2)
 res2 = BleCharNew(alarmStateCharProps, BleHandleUuid16(0xFACE), alarmStateValueMD, alarmStateCccdMD, 0)

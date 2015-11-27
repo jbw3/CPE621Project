@@ -117,6 +117,12 @@ endFuncVal = 1
 uartStrLen = uartRead(uartRxStr$)
 
 if strcmp(uartRxStr$, uartTermStr$) == 0 then
+    print "\nTrying to disconnect BLE..."
+    if BleDisconnect(conn) == 0 then
+        print "\nDisconnected."
+    else
+        print "\nUnable to disconnect. BLE may not have been connected..."
+    endif
     print "\nEnding program execution."
     endFuncVal = 0
 elseif strcmp(uartRxStr$, "0\r") == 0 then
