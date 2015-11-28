@@ -2,7 +2,7 @@
 
 ///////////////////////////////
 // program settings
-#define ALERT_AFTER_SEC 5
+#define ALERT_TRIGGER_PERIOD_SEC 10
 #define ADVERT_TMOUT_SEC 120
 ///////////////////////////////
 
@@ -27,6 +27,7 @@ dim conn            // connection handle
 dim hAmdessSvc       // AMDeSS service handle
 dim hArmStateChar       // ARM STATE characteristic handle
 dim hAlarmStateChar     // ALARM STATE characteristic handle
+dim armStateVal$, alarmStateVal$
 dim EnableCreateIASvc
 
 // uart vars
@@ -65,13 +66,28 @@ function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
         case 0
             // received new connection! save connection handle
             conn = msgCtx
-            TimerStart(2, ALERT_AFTER_SEC * 1000, 0)
+            // cls: trigger a (fake) alert every n seconds for testing
+            TimerStart(2, ALERT_TRIGGER_PERIOD_SEC * 1000, 1)
         case 1
             print "\nConnection lost."
             exitfunc 0  // we successfully disconnected!
         case else
             // do nothing special for now...
     endselect
+endfunc 1
+
+////
+//// HandleCCCDWritten()
+////
+function HandleCCCDWritten(byVal charHandle, byVal cccdValue)
+
+if charHandle == hArmStateChar then
+    print "\nArm State CCCD written! Value: 0x", INTEGER.H'cccdValue
+elseif charHandle == hAlarmStateChar then
+    print "\nAlarm State CCCD written! Value: 0x", INTEGER.H'cccdValue
+else
+endif
+
 endfunc 1
 
 ////
@@ -90,19 +106,19 @@ sub StartBle()
     dim advertInterval_ms : advertInterval_ms = 1000    // advertise every second
     dim advertTimeout_ms : advertTimeout_ms = ADVERT_TMOUT_SEC * 1000
 
-    print "\nCurrent device name: ", BleGetDeviceName$()
-
     // configure the GAP service
+    print "\nConfiguring GAP..."
     ConfigureGAP()
-
-    if EnableCreateIASvc == 1 then
-        CreateAmdessService(hAmdessSvc, hArmStateChar, hAlarmStateChar)
-    endif
-
     print "\nCurrent device name: ", BleGetDeviceName$()
+
+    // configure Amdess service
+    print "\nConfiguring AMDeSS service..."
+    CreateAmdessService(hAmdessSvc, hArmStateChar, hAlarmStateChar)
 
     if BleAdvertStart(BLE_ADV_INDIRECT, peerAdr$, advertInterval_ms, advertTimeout_ms, BLE_FP_DISABLE_WHITELIST) == 0 then
         print "\nStarted advertising..."
+    else
+        print "\nUnable to start advertising!"
     endif
 
 endsub
@@ -125,19 +141,41 @@ if strcmp(uartRxStr$, uartTermStr$) == 0 then
     endif
     print "\nEnding program execution."
     endFuncVal = 0
-elseif strcmp(uartRxStr$, "0\r") == 0 then
-    print "\nWill not create Immediate Alert Service"
-    EnableCreateIASvc = 0
-    StartBle()
-elseif strcmp(uartRxStr$, "1\r") == 0 then
-    print "\nCreating Immediate Alert Service"
-    EnableCreateIASvc = 1
-    StartBle()
 endif
 
 uartRxStr$ = ""     // reset the variable
 
 endfunc endFuncVal
+
+////
+//// PeriodicTriggerAlarm()
+////
+function PeriodicTriggerAlarm()
+
+// check ArmState characteristic
+res = BleCharValueRead(hArmStateChar, armStateVal$)
+
+if res != 0 then
+    print "\nUnable to read ARM STATE. Return code:", res
+else
+    print "\nARM STATE:", armStateVal$
+    dim armStateInt
+    res = BleDecodeU8(armStateVal$, armStateInt, 0)
+
+    print "\nExtracted ", res, " bytes from armStateVal$"
+    print "\nArm state: ", INTEGER.H'armStateInt
+
+    if armStateInt == 0 then
+        // write a 1!
+        //BleCharValueWrite()
+    elseif armStateInt == 1 then
+        // write a 0!
+    else
+    endif
+
+endif
+
+endfunc 1
 
 ////
 //// main()
@@ -146,9 +184,12 @@ endfunc endFuncVal
 // set up event handlers
 onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
 onevent EVBLEMSG            call HandleBleMsg
+onevent EVCHARCCCD          call HandleCCCDWritten
 onevent EVUARTRX            call HandleUartRx
+onevent EVTMR2              call PeriodicTriggerAlarm
 onevent EVTMR3              call ReadFromUart
 
-print "\nEnter '1' to create AMDeSS service, '0' to just start advertising."
+// init services and start advertising
+StartBle()
 
 waitevent
