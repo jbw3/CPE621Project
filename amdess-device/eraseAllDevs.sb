@@ -1,0 +1,4 @@
+// erases all bonded devices
+
+print "\nErasing all bonded devices..."
+BleBondMngrErase(0)
