@@ -113,7 +113,9 @@ public class DeviceActivity extends AppCompatActivity
 
     public void onArmDisarmClicked(View v)
     {
-        Log.d("onArmDisarmClicked", "TODO: Arm/Disarm AMDeSS device");
+        Intent intent = new Intent(Constants.ACTION_TOGGLE_ARM_STATE);
+        intent.putExtra(Constants.INFO_DEVICE_ADDRESS, address);
+        sendBroadcast(intent);
     }
 
     private void syncWithInfo()

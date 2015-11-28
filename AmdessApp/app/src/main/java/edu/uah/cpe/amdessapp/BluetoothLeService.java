@@ -9,8 +9,12 @@ import android.bluetooth.BluetoothGattCallback;
 import android.bluetooth.BluetoothGattCharacteristic;
 import android.bluetooth.BluetoothGattDescriptor;
 import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
 import android.bluetooth.BluetoothProfile;
+import android.content.BroadcastReceiver;
+import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
@@ -104,7 +108,6 @@ public class BluetoothLeService extends Service
                     // at the same time. Thus, write the arm state now and the alarm state
                     // when its write is complete (in onDescriptorWrite)
                     setCccdNotificationsEnabled(gatt, armStateChar, true);
-//                    setCccdNotificationsEnabled(gatt, alarmStateChar, true);
                 }
             }
 
@@ -248,6 +251,24 @@ public class BluetoothLeService extends Service
         }
     }
 
+    // ------ Broadcast Receiver ------
+    private class CommandReceiver extends BroadcastReceiver
+    {
+        @Override
+        public void onReceive(Context context, Intent intent)
+        {
+            String address = intent.getStringExtra(Constants.INFO_DEVICE_ADDRESS);
+            if (address == null || address.isEmpty())
+            {
+                Log.w("onReceive", "deviceAddress is null or an empty string");
+            }
+            else
+            {
+                toggleArmState(address);
+            }
+        }
+    }
+
     private static final int NOTIFICATION_ID = 123;
     private static final int ARM_STATE_DISARMED = 0;
     private static final int ARM_STATE_ARMED = 1;
@@ -258,8 +279,10 @@ public class BluetoothLeService extends Service
     private BleBinder bleBinder = new BleBinder();
     private BluetoothGatt bluetoothGatt = null;
     static private HashMap<String, DeviceInfo> infoMap = new HashMap<>();
-    BluetoothGattCharacteristic armStateChar = null;
-    BluetoothGattCharacteristic alarmStateChar = null;
+    private BluetoothGattCharacteristic armStateChar = null;
+    private BluetoothGattCharacteristic alarmStateChar = null;
+    private CommandReceiver commandReceiver = new CommandReceiver();
+    IntentFilter intentFilter = new IntentFilter();
 
     static public DeviceInfo getDeviceInfo(String address)
     {
@@ -268,12 +291,22 @@ public class BluetoothLeService extends Service
 
     public BluetoothLeService()
     {
+        // add actions to filter
     }
 
     @Override
     public IBinder onBind(Intent intent)
     {
         return bleBinder;
+    }
+
+    @Override
+    public void onCreate()
+    {
+        super.onCreate();
+
+        intentFilter.addAction(Constants.ACTION_TOGGLE_ARM_STATE);
+        registerReceiver(commandReceiver, intentFilter);
     }
 
     @Override
@@ -284,6 +317,8 @@ public class BluetoothLeService extends Service
             bluetoothGatt.close();
             bluetoothGatt = null;
         }
+
+        unregisterReceiver(commandReceiver);
     }
 
     private void setConnectionStatus(String address, boolean connected)
@@ -431,6 +466,35 @@ public class BluetoothLeService extends Service
                         .setVibrate(VIBRATE_PATTERN);
         Notification notification = builder.build();
         notificationManager.notify(NOTIFICATION_ID, notification);
+    }
+
+    private void toggleArmState(String address)
+    {
+        if (bluetoothGatt == null)
+        {
+            Log.w("toggleArmState", "bluetoothGatt is null");
+            return;
+        }
+
+        BluetoothManager bluetoothManager = (BluetoothManager) getSystemService(BLUETOOTH_SERVICE);
+        BluetoothDevice device = null;
+        for (BluetoothDevice d : bluetoothManager.getConnectedDevices(BluetoothProfile.GATT))
+        {
+            if (d.getAddress().equals(address))
+            {
+                device = d;
+                break;
+            }
+        }
+
+        if (device != null)
+        {
+            Log.d("toggleArmState", "Found connected device");
+        }
+        else
+        {
+            Log.d("toggleArmState", "Could not find connected device");
+        }
     }
 
     private void broadcastUpdate(String action, String address)
