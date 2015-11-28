@@ -21,8 +21,6 @@ public class DeviceActivity extends AppCompatActivity
         @Override
         public void onReceive(Context context, Intent intent)
         {
-            Log.d("onReceive", "start...");
-
             String deviceAddress = intent.getStringExtra(Constants.INFO_DEVICE_ADDRESS);
 
             if (deviceAddress == null || deviceAddress.isEmpty())
@@ -120,8 +118,6 @@ public class DeviceActivity extends AppCompatActivity
 
     private void syncWithInfo()
     {
-        Log.d("syncWithInfo", "start");
-
         BluetoothLeService.DeviceInfo info = BluetoothLeService.getDeviceInfo(address);
         if (info == null)
         {
@@ -140,13 +136,11 @@ public class DeviceActivity extends AppCompatActivity
         int color;
         if (info.connected)
         {
-            Log.d("syncWithInfo", "Connected");
             connectionStatus = "Connected";
             color = Constants.GREEN_COLOR;
         }
         else
         {
-            Log.d("syncWithInfo", "Disconnected");
             connectionStatus = "Disconnected";
             color = Constants.RED_COLOR;
         }

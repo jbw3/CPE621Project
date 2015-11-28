@@ -139,23 +139,27 @@ public class BluetoothLeService extends Service
                 return;
             }
 
-            byte[] value = descriptor.getValue();
-
-            Log.d("setCccdNtfictnsEnabled", String.format("%x%x", value[1], value[0]));
-
-            byte lower = value[0];
+            byte[] value;
             if (enabled)
             {
-                lower |= 0x01;
+                value = BluetoothGattDescriptor.ENABLE_NOTIFICATION_VALUE;
             }
             else
             {
-                lower &= 0xFE;
+                value = BluetoothGattDescriptor.DISABLE_NOTIFICATION_VALUE;
             }
-            value[0] = lower;
-            descriptor.setValue(value);
+            boolean ok = descriptor.setValue(value);
+            if (!ok)
+            {
+                Log.w("setCccdNtfictnsEnabled", "setValue failed");
+                return;
+            }
 
-            gatt.writeDescriptor(descriptor);
+            ok = gatt.writeDescriptor(descriptor);
+            if (!ok)
+            {
+                Log.w("setCccdNtfictnsEnabled", "writeDescriptor failed");
+            }
         }
 
         private void printServices(BluetoothGatt gatt)
