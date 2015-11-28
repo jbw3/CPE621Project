@@ -52,6 +52,9 @@ public class BluetoothLeService extends Service
             {
                 Log.d("onConnectionStateChange", "Disconnected");
 
+                armStateChar = null;
+                alarmStateChar = null;
+
                 setConnectionStatus(address, false);
 
                 broadcastUpdate(Constants.ACTION_GATT_DISCONNECTED, address);
@@ -77,8 +80,8 @@ public class BluetoothLeService extends Service
             }
             else
             {
-                BluetoothGattCharacteristic armStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE);
-                BluetoothGattCharacteristic alarmStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE);
+                armStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE);
+                alarmStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE);
                 if (armStateChar == null || alarmStateChar == null)
                 {
                     if (armStateChar == null)
@@ -97,8 +100,11 @@ public class BluetoothLeService extends Service
                     gatt.setCharacteristicNotification(armStateChar, true);
                     gatt.setCharacteristicNotification(alarmStateChar, true);
 
+                    // We cannot write both the arm state and alarm state descriptors
+                    // at the same time. Thus, write the arm state now and the alarm state
+                    // when its write is complete (in onDescriptorWrite)
                     setCccdNotificationsEnabled(gatt, armStateChar, true);
-                    setCccdNotificationsEnabled(gatt, alarmStateChar, true);
+//                    setCccdNotificationsEnabled(gatt, alarmStateChar, true);
                 }
             }
 
@@ -130,8 +136,35 @@ public class BluetoothLeService extends Service
             }
         }
 
+        @Override
+        public void onDescriptorWrite(BluetoothGatt gatt, BluetoothGattDescriptor descriptor, int status)
+        {
+            UUID id = descriptor.getUuid();
+            String name = Constants.GATT_DESCRIPTOR_NAMES.get(id);
+            if (name == null)
+            {
+                name = id.toString();
+            }
+            Log.d("onDescriptorWrite", String.format("Descriptor: %s, write %s", name, (status == BluetoothGatt.GATT_SUCCESS ? "succeeded" : "failed")));
+
+            // when the arm state descriptor write has completed, write the alarm state descriptor
+            if (descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE) &&
+                descriptor.getUuid().equals(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION))
+            {
+                setCccdNotificationsEnabled(gatt, alarmStateChar, true);
+            }
+        }
+
         private void setCccdNotificationsEnabled(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, boolean enabled)
         {
+            // get characteristic name
+            UUID charId = characteristic.getUuid();
+            String charName = Constants.GATT_CHARACTERISTIC_NAMES.get(charId);
+            if (charName == null)
+            {
+                charName = charId.toString();
+            }
+
             BluetoothGattDescriptor descriptor = characteristic.getDescriptor(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION);
             if (descriptor == null)
             {
@@ -151,14 +184,14 @@ public class BluetoothLeService extends Service
             boolean ok = descriptor.setValue(value);
             if (!ok)
             {
-                Log.w("setCccdNtfictnsEnabled", "setValue failed");
+                Log.w("setCccdNtfictnsEnabled", String.format("CCCD setValue failed for characteristic %s", charName));
                 return;
             }
 
             ok = gatt.writeDescriptor(descriptor);
             if (!ok)
             {
-                Log.w("setCccdNtfictnsEnabled", "writeDescriptor failed");
+                Log.w("setCccdNtfictnsEnabled", String.format("CCCD writeDescriptor failed for characteristic %s", charName));
             }
         }
 
@@ -225,6 +258,8 @@ public class BluetoothLeService extends Service
     private BleBinder bleBinder = new BleBinder();
     private BluetoothGatt bluetoothGatt = null;
     static private HashMap<String, DeviceInfo> infoMap = new HashMap<>();
+    BluetoothGattCharacteristic armStateChar = null;
+    BluetoothGattCharacteristic alarmStateChar = null;
 
     static public DeviceInfo getDeviceInfo(String address)
     {
