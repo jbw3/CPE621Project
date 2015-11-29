@@ -1,0 +1,83 @@
+// ad7746.sb
+
+#define CLOCK_HZ 100000     // 100 KHz
+
+// AD7746 Constants
+#define AD7746_ADDRESS 0x48
+#define AD7746_REG_STATUS 0x00
+#define AD7746_REG_EXC_SETUP 0x09
+
+dim cdcRes   // result var unique to this file
+dim i2cHandle
+dim statusReg   // holds value of status reg
+
+dim uartStrLen
+dim uartRxStr$
+dim termCmd$
+dim endFuncVal
+
+termCmd$ = "end\r"
+
+////
+//// HandleUartRx()
+////
+function HandleUartRx()
+    TimerStart(1,100,0)     // allow enough time for data to reach rx buffer
+endfunc 1
+
+////
+//// ReadFromUart()
+////
+function ReadFromUart()
+
+endFuncVal = 1
+
+uartStrLen = uartRead(uartRxStr$)
+
+if strcmp(uartRxStr$, termCmd$) == 0 then
+    print "\nEnding program execution."
+    endFuncVal = 0
+endif
+
+endfunc endFuncVal
+
+////
+//// SampleCapData()
+////
+function SampleCapData()
+
+// todo
+
+endfunc 1
+
+////
+//// SetupAD7746()
+////
+sub SetupAD7746()
+
+cdcRes = i2cOpen(CLOCK_HZ, 0, i2cHandle)
+
+// read status reg first
+cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_STATUS, statusReg)
+
+print "\nStatus reg: 0x", INTEGER.H'statusReg
+
+// set EXC reg
+//i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_EXC_SETUP, 0x00)
+
+endsub
+
+////
+//// main()
+////
+
+SetupAD7746()
+
+// start timer #2, 200ms, recurring
+TimerStart(0, 200, 1)
+
+onevent EVUARTRX    call HandleUartRx
+onevent EVTMR0      call SampleCapData
+onevent EVTMR1      call ReadFromUart
+
+waitevent

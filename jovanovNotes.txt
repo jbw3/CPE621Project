@@ -70,3 +70,15 @@ SYSTEM ACTIONS:
 
     1. App may disarm the device
     2. OR, App writes Alarm state char. (to turn off alarm, but remain armed)
+
+CAPDAC:
+
+- CIN2 +/- used in differential mode
+- use status reg to detect new data ready?
+- STATUS:RDYCAP = 0 -> Capacitive channel conversion finished, unread data ready
+- CAP DATA: capacitive channel output data (24 bits)
+- CAP DATA: all 3B should be read in 1 I2C tx b/c new data might come in and
+corrupt 1 or 2 bytes...
+- CAP SETUP
+- EXC SETUP (turn on EXC_A)
+- CONFIGURATION
