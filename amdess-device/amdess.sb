@@ -2,7 +2,6 @@
 
 ///////////////////////////////
 // program settings
-#define ALERT_TRIGGER_PERIOD_SEC 10
 #define ADVERT_TMOUT_SEC 120
 ///////////////////////////////
 
@@ -22,6 +21,8 @@
 // global program variables
 ///////////////////////////////
 dim res             // result of operations
+dim uartRes         // result of uart commands
+dim unknownCmd      // flags an unknown command
 dim endFuncVal      // variable for endfunc
 dim conn            // connection handle
 
@@ -42,11 +43,17 @@ dim notifyAlarmState    // caches the notify bit from CCCD so it is only extract
 
 // uart vars
 dim uartRxStr$
-dim uartTermStr$
+dim termCmd$
+dim armCmd$, disarmCmd$
+dim alarmOnCmd$, alarmOffCmd$
 dim uartStrLen
 ///////////////////////////////
 
-uartTermStr$ = "end\r"  // ends execution
+termCmd$ = "end\r"  // ends execution
+armCmd$ = "arm\r"   // arms device
+disarmCmd$ = "disarm\r"     // disarms device
+alarmOnCmd$ = "alarm on\r"        // triggers an alarm condition (if armed)
+alarmOffCmd$ = "alarm off\r"   // turns off alarm (if alarming)
 
 ////
 //// Handle BLE Advertizing Timeout
@@ -66,51 +73,6 @@ sub ConfigureGAP()
         print "\nBleGapSvcInit() failed with a result of ", res
     endif
 endsub
-
-////
-//// HandleBleMsg()
-///
-function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
-    print "\nmsgId: ", msgId
-    select msgId
-        case 0
-            // received new connection! save connection handle
-            conn = msgCtx
-            // cls: trigger a (fake) alert every n seconds for testing
-            TimerStart(2, ALERT_TRIGGER_PERIOD_SEC * 1000, 1)
-        case 1
-            print "\nConnection lost."
-            exitfunc 0  // we successfully disconnected!
-        case else
-            // do nothing special for now...
-    endselect
-endfunc 1
-
-////
-//// HandleCCCDWritten()
-////
-function HandleCCCDWritten(byVal charHandle, byVal cccdValue)
-
-if charHandle == hArmStateChar then
-    print "\nArm State CCCD written! Value: 0x", INTEGER.H'cccdValue
-    armStateCCCD = cccdValue    // save arm state CCCD value
-    notifyArmState = armStateCCCD & 0x01    // extract bit 0 (notify bit)
-
-elseif charHandle == hAlarmStateChar then
-    print "\nAlarm State CCCD written! Value: 0x", INTEGER.H'cccdValue
-    alarmStateCCCD = cccdValue  // save alarm state CCCD value
-    notifyAlarmState = alarmStateCCCD & 0x01    // extract bit 0 (notify bit)
-
-endif
-
-endfunc 1
-
-////
-//// HandleUartRx()
-////
-function HandleUartRx()
-    TimerStart(3,100,0)     // allow enough time for data to reach rx buffer
-endfunc 1
 
 ////
 //// StartBle()
@@ -139,28 +101,41 @@ sub StartBle()
 endsub
 
 ////
-//// ReadFromUart()
+//// ReadAlarmState()
 ////
-function ReadFromUart()
-
-endFuncVal = 1
-
-uartStrLen = uartRead(uartRxStr$)
-
-if strcmp(uartRxStr$, uartTermStr$) == 0 then
-    print "\nTrying to disconnect BLE..."
-    if BleDisconnect(conn) == 0 then
-        print "\nDisconnected."
-    else
-        print "\nUnable to disconnect. BLE may not have been connected..."
+function ReadAlarmState(byRef alarmStateInt)
+    res = ReadU8CharValue(hAlarmStateChar, alarmStateInt)
+    if res != 0 then
+        print "\nUnable to read ALARM STATE", res
     endif
-    print "\nEnding program execution."
-    endFuncVal = 0
-endif
+endfunc res
 
-uartRxStr$ = ""     // reset the variable
+////
+//// WriteAlarmState()
+////
+function WriteAlarmState(byVal alarmStateInt)
+    // notifyAlarmState determines whether this also notifies
+    res = WriteU8CharValue(hAlarmStateChar, alarmStateInt, notifyAlarmState)
+    if res != 0 then
+        print "\nUnable to write ALARM STATE", res
+    endif
+endfunc res
 
-endfunc endFuncVal
+////
+//// OnArmStateWritten()
+////
+sub OnArmStateWritten()
+
+    // whether we are now armed or disarmed, we need to ensure
+    // that alarm state is now OFF
+
+    res = ReadAlarmState(alarmState)    // get current state
+    if alarmState == 1 then
+        alarmState = 0    // turn off alarm
+        res = WriteAlarmState(alarmState)   // write/notify
+    endif
+
+endsub
 
 ////
 //// ReadArmState()
@@ -174,50 +149,122 @@ function ReadArmState(byRef armStateInt)
 endfunc res
 
 ////
-//// ReadAlarmState()
+//// WriteArmState()
 ////
-function ReadAlarmState(byRef alarmStateInt)
-    res = ReadU8CharValue(hAlarmStateChar, alarmStateInt)
+function WriteArmState(byVal armStateInt)
+    // notifyArmState determines whether this also notifies
+    res = WriteU8CharValue(hArmStateChar, armStateInt, notifyArmState)
     if res != 0 then
-        print "\nUnable to read ALARM STATE", res
+        print "\nUnable to write ARM STATE", res
+    else
+        // call OnWritten() handler
+        OnArmStateWritten()
     endif
 endfunc res
 
 ////
-//// WriteAlarmState()
+//// ReadFromUart()
 ////
-function WriteAlarmState(byRef alarmStateInt)
-    // notifyAlarmState determines whether this writes or notifies
-    res = WriteU8CharValue(hAlarmStateChar, alarmStateInt, notifyAlarmState)
-    if res != 0 then
-        print "\nUnable to write ALARM STATE"
+function ReadFromUart()
+
+endFuncVal = 1
+uartRes = 0
+unknownCmd = 0
+
+uartStrLen = uartRead(uartRxStr$)
+
+if strcmp(uartRxStr$, termCmd$) == 0 then
+
+    print "\nTrying to disconnect BLE..."
+    if BleDisconnect(conn) == 0 then
+        print "\nDisconnected."
+    else
+        print "\nUnable to disconnect. BLE may not have been connected..."
     endif
-endfunc res
+    print "\nEnding program execution."
+    endFuncVal = 0
+
+elseif strcmp(uartRxStr$, armCmd$) == 0 then
+    uartRes = WriteArmState(1)
+elseif strcmp(uartRxStr$, disarmCmd$) == 0 then
+    uartRes = WriteArmState(0)
+elseif strcmp(uartRxStr$, alarmOnCmd$) == 0 then
+    uartRes = WriteAlarmState(1)
+elseif strcmp(uartRxStr$, alarmOffCmd$) == 0 then
+    uartRes = WriteAlarmState(0)
+else
+    // no recognized command
+    unknownCmd = 1
+endif
+
+// if we ran a known command, print the result
+if (uartRes == 0) && (endFuncVal == 1) && (unknownCmd == 0) then
+    print "\nsuccess!"
+elseif (uartRes == 1) && (endFuncVal == 1) && (unknownCmd == 0) then
+    print "\nfailed.", res
+endif
+
+uartRxStr$ = ""     // reset the variable
+
+endfunc endFuncVal
 
 ////
-//// PeriodicTriggerAlarm()
+//// HandleBleMsg()
+///
+function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
+    print "\nmsgId: ", msgId
+    select msgId
+        case 0
+            // received new connection! save connection handle
+            conn = msgCtx
+        case 1
+            print "\nConnection lost."
+            exitfunc 0  // we successfully disconnected!
+        case else
+            // do nothing special for now...
+    endselect
+endfunc 1
+
 ////
-function PeriodicTriggerAlarm()
+//// HandleCCCDWritten()
+////
+function HandleCCCDWritten(byVal charHandle, byVal cccdValue)
 
-print "\nEntering PeriodicTriggerAlarm..."
+if charHandle == hArmStateChar then
+    print "\nArm State CCCD written! Value: 0x", INTEGER.H'cccdValue
+    armStateCCCD = cccdValue    // save arm state CCCD value
+    notifyArmState = armStateCCCD & 0x01    // extract bit 0 (notify bit)
 
-// check ArmState characteristic
-res = ReadArmState(armState)
+elseif charHandle == hAlarmStateChar then
+    print "\nAlarm State CCCD written! Value: 0x", INTEGER.H'cccdValue
+    alarmStateCCCD = cccdValue  // save alarm state CCCD value
+    notifyAlarmState = alarmStateCCCD & 0x01    // extract bit 0 (notify bit)
 
-if armState == 1 then
-
-    res = ReadAlarmState(alarmState)
-    // toggle alarm state
-    alarmState = !alarmState
-    // write the new alarm state
-    res = WriteAlarmState(alarmState)
-
-    if res == 0 then
-        print "\nAlarm state written!"
-    endif
 endif
 
 endfunc 1
+
+////
+//// HandleCharValWritten()
+////
+function HandleCharValWritten(byVal hChar, byVal offset, byVal length)
+
+if hChar == hAlarmStateChar then
+    print "\nALARM STATE written by client"
+elseif hChar == hArmStateChar then
+    print "\nARM STATE written by client"
+    OnArmStateWritten()
+endif
+
+endfunc 1
+
+////
+//// HandleUartRx()
+////
+function HandleUartRx()
+    TimerStart(3,100,0)     // allow enough time for data to reach rx buffer
+endfunc 1
+
 
 ////
 //// main()
@@ -226,9 +273,9 @@ endfunc 1
 // set up event handlers
 onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
 onevent EVBLEMSG            call HandleBleMsg
+onevent EVCHARVAL           call HandleCharValWritten
 onevent EVCHARCCCD          call HandleCCCDWritten
 onevent EVUARTRX            call HandleUartRx
-onevent EVTMR2              call PeriodicTriggerAlarm
 onevent EVTMR3              call ReadFromUart
 
 // init services and start advertising

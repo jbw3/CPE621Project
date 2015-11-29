@@ -89,8 +89,7 @@ dim valueStr$
 res2 = BleEncode8(valueStr$, valueInt, 0)
 
 if res2 == 0 then
-    if notify == 1 then
-        print "\nCalling BleCharValueNotify() only..."
+    if notify == 1 then        
         res2 = BleCharValueNotify(hChar, valueStr$)
     else
         res2 = BleCharValueWrite(hChar, valueStr$)
