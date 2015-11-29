@@ -10,6 +10,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
 import android.widget.TextView;
 
 import java.util.UUID;
@@ -43,6 +44,7 @@ public class DeviceActivity extends AppCompatActivity
     private TextView armedStatusTextView;
     private TextView alarmTextView;
     private TextView servicesTextView;
+    private Button armStateButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -54,6 +56,7 @@ public class DeviceActivity extends AppCompatActivity
         armedStatusTextView = (TextView) findViewById(R.id.armStatusTextView);
         alarmTextView = (TextView) findViewById(R.id.alarmTextView);
         servicesTextView = (TextView) findViewById(R.id.servicesTextView);
+        armStateButton = (Button) findViewById(R.id.armButton);
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null)
@@ -128,6 +131,7 @@ public class DeviceActivity extends AppCompatActivity
             connectionStatusTextView.setTextColor(Constants.RED_COLOR);
             armedStatusTextView.setText("Disarmed");
             armedStatusTextView.setTextColor(Constants.GREEN_COLOR);
+            armStateButton.setText("Arm");
             alarmTextView.setText("");
             servicesTextView.setText("Services:\n");
             return;
@@ -157,12 +161,14 @@ public class DeviceActivity extends AppCompatActivity
             Log.d("syncWithInfo", "Armed");
             armedStatus = "Armed";
             armedColor = Constants.RED_COLOR;
+            armStateButton.setText("Disarm");
         }
         else
         {
             Log.d("syncWithInfo", "Disarmed");
             armedStatus = "Disarmed";
             armedColor = Constants.GREEN_COLOR;
+            armStateButton.setText("Arm");
         }
         armedStatusTextView.setText(armedStatus);
         armedStatusTextView.setTextColor(armedColor);
