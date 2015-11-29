@@ -12,10 +12,13 @@
 
 dim cdcRes   // result var unique to this file
 dim i2cHandle
+dim i2cWriteStr$, i2cReadStr$, i2cReadLen   // i2cWriteRead() vars
 dim statusReg       // status reg
 dim capSetupReg     // capacitance setup reg
 dim excSetupReg     // excitation setup reg
 dim configReg       // configuration reg
+dim dataReg         // data reg
+dim tmp
 
 dim uartStrLen
 dim uartRxStr$
@@ -55,6 +58,34 @@ function SampleCapData()
 // read status reg
 cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_STATUS, statusReg)
 print "\nSTATUS: 0x", INTEGER.H'statusReg
+
+cdcRes = BleEncode8(i2cWriteStr$, AD7746_REG_CAP_DATA_BASE, 0)
+i2cReadStr$ = ""    // reset
+i2cReadLen = 3      // read 3B
+
+//cdcRes = i2cWriteRead(AD7746_ADDRESS, i2cWriteStr$, i2cReadStr$, i2cReadLen)
+//cdcRes = BleDecodeU8(i2cReadStr$, statusReg, 0)
+//print "\nRaw data:", i2cReadStr$
+//print "\nInteger data: 0x", INTEGER.H'statusReg
+
+if statusReg % 2 == 0 then
+    // the 0-bit (RDYCAP) is low, indicating new data is ready!
+    dataReg = 0x00
+    cdcRes = i2cWriteRead(AD7746_ADDRESS, i2cWriteStr$, i2cReadStr$, i2cReadLen)
+    //print "\nRaw data:", i2cReadStr$
+
+    cdcRes = BleDecodeU8(i2cReadStr$, tmp, 0)
+    dataReg = tmp
+    cdcRes = BleDecodeU8(i2cReadStr$, tmp, 1)
+    dataReg = dataReg << 8
+    dataReg = dataReg | tmp
+    //print "\nInteger data: 0x", INTEGER.H'dataReg
+    cdcRes = BleDecodeU8(i2cReadStr$, tmp, 0)
+    dataReg = dataReg << 8
+    dataReg = dataReg | tmp
+    print "\nInteger data: 0x", INTEGER.H'dataReg
+
+endif
 
 endfunc 1
 
