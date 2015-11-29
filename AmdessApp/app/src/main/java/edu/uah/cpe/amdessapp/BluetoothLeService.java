@@ -145,7 +145,21 @@ public class BluetoothLeService extends Service
         @Override
         public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
         {
-            Log.d("onCharacteristicWrite", String.format("status: %s", (status == BluetoothGatt.GATT_SUCCESS ? "succeeded" : "failed")));
+            if (status == BluetoothGatt.GATT_SUCCESS)
+            {
+                if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE))
+                {
+                    onReceiveArmState(gatt, characteristic);
+                }
+                else if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
+                {
+                    onReceiveAlarmState(gatt, characteristic);
+                }
+            }
+            else
+            {
+                Log.w("onCharacteristicWrite", "Write failed");
+            }
         }
 
         @Override
