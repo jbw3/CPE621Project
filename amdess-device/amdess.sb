@@ -7,7 +7,7 @@
 ///////////////////////////////
 
 ///////////////////////////////
-// GAP settings
+// gap settings
 ///////////////////////////////
 #define DEV_NAME "AMDeSS Sensor"
 #define NAME_IS_WR 0                // name is writable
@@ -19,16 +19,26 @@
 ///////////////////////////////
 
 ///////////////////////////////
-// Global program variables
+// global program variables
 ///////////////////////////////
 dim res             // result of operations
 dim endFuncVal      // variable for endfunc
 dim conn            // connection handle
+
+// ble handles
 dim hAmdessSvc       // AMDeSS service handle
 dim hArmStateChar       // ARM STATE characteristic handle
 dim hAlarmStateChar     // ALARM STATE characteristic handle
-dim armStateVal$, alarmStateVal$
-dim EnableCreateIASvc
+
+// program state variables
+dim armState            // holds value of arm state
+dim armStateCCCD        // holds value of arm state CCCD
+dim notifyArmState      // caches the notify bit from CCCD so it is only extracted
+                        // from CCCD when it actually changes
+dim alarmState          // holds value of alarm state
+dim alarmStateCCCD      // holds value of alarm state CCCD
+dim notifyAlarmState    // caches the notify bit from CCCD so it is only extracted
+                        // from CCCD when it actually changes
 
 // uart vars
 dim uartRxStr$
@@ -83,9 +93,14 @@ function HandleCCCDWritten(byVal charHandle, byVal cccdValue)
 
 if charHandle == hArmStateChar then
     print "\nArm State CCCD written! Value: 0x", INTEGER.H'cccdValue
+    armStateCCCD = cccdValue    // save arm state CCCD value
+    notifyArmState = armStateCCCD & 0x01    // extract bit 0 (notify bit)
+
 elseif charHandle == hAlarmStateChar then
     print "\nAlarm State CCCD written! Value: 0x", INTEGER.H'cccdValue
-else
+    alarmStateCCCD = cccdValue  // save alarm state CCCD value
+    notifyAlarmState = alarmStateCCCD & 0x01    // extract bit 0 (notify bit)
+
 endif
 
 endfunc 1
@@ -148,31 +163,58 @@ uartRxStr$ = ""     // reset the variable
 endfunc endFuncVal
 
 ////
+//// ReadArmState()
+//// Return code: 0 = success, Nonzero = failure
+////
+function ReadArmState(byRef armStateInt)
+    res = ReadU8CharValue(hArmStateChar, armStateInt)
+    if res != 0 then
+        print "\nUnable to read ARM STATE", res
+    endif
+endfunc res
+
+////
+//// ReadAlarmState()
+////
+function ReadAlarmState(byRef alarmStateInt)
+    res = ReadU8CharValue(hAlarmStateChar, alarmStateInt)
+    if res != 0 then
+        print "\nUnable to read ALARM STATE", res
+    endif
+endfunc res
+
+////
+//// WriteAlarmState()
+////
+function WriteAlarmState(byRef alarmStateInt)
+    // notifyAlarmState determines whether this writes or notifies
+    res = WriteU8CharValue(hAlarmStateChar, alarmStateInt, notifyAlarmState)
+    if res != 0 then
+        print "\nUnable to write ALARM STATE"
+    endif
+endfunc res
+
+////
 //// PeriodicTriggerAlarm()
 ////
 function PeriodicTriggerAlarm()
 
+print "\nEntering PeriodicTriggerAlarm..."
+
 // check ArmState characteristic
-res = BleCharValueRead(hArmStateChar, armStateVal$)
+res = ReadArmState(armState)
 
-if res != 0 then
-    print "\nUnable to read ARM STATE. Return code:", res
-else
-    print "\nARM STATE:", armStateVal$
-    dim armStateInt
-    res = BleDecodeU8(armStateVal$, armStateInt, 0)
+if armState == 1 then
 
-    print "\nExtracted ", res, " bytes from armStateVal$"
-    print "\nArm state: ", INTEGER.H'armStateInt
+    res = ReadAlarmState(alarmState)
+    // toggle alarm state
+    alarmState = !alarmState
+    // write the new alarm state
+    res = WriteAlarmState(alarmState)
 
-    if armStateInt == 0 then
-        // write a 1!
-        //BleCharValueWrite()
-    elseif armStateInt == 1 then
-        // write a 0!
-    else
+    if res == 0 then
+        print "\nAlarm state written!"
     endif
-
 endif
 
 endfunc 1

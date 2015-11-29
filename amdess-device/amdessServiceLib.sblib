@@ -2,7 +2,8 @@
 
 #include "ble_defines.sblib"
 
-dim res2
+dim res2                // result of operations (res2 so as not to conflict with res)
+dim numBytesExtracted   // for BleDecodeU8() function
 
 ////
 //// CreateArmStateCharacteristic()
@@ -13,7 +14,7 @@ dim armStateValueMD, armStateCccdMD
 dim armStateCharProps
 dim armState$
 
-armState$ = "\00"   // no alert by default
+res2 = BleEncode8(armState$, 0, 0)   // not armed by default
 armStateCharProps =   BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
 
 // ARM STATE characteristic
@@ -37,7 +38,7 @@ dim alarmStateValueMD, alarmStateCccdMD
 dim alarmStateCharProps
 dim alarmState$
 
-alarmState$ = "\00"   // not alarming by default
+res2 = BleEncode8(alarmState$, 0, 0)   // not alarming by default
 alarmStateCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_NOTIFY
 
 // ALARM STATE characteristic
@@ -61,3 +62,40 @@ CreateArmStateChar(amdessSvcHandle, armStateCharHandle)
 CreateAlarmStateChar(amdessSvcHandle, alarmStateCharHandle)
 
 endsub
+
+////
+//// ReadU8CharValue()
+////
+function ReadU8CharValue(byRef hChar, byRef valueInt)
+dim valueStr$
+
+// read characteristic (value attribute)
+res2 = BleCharValueRead(hChar, valueStr$)
+
+if res2 == 0 then
+    // decode an 8-bit int (cls: decode doesn't return a success/fail code)
+    numBytesExtracted = BleDecodeU8(valueStr$, valueInt, 0)
+endif
+
+endfunc res2
+
+////
+//// WriteU8CharValue()
+////
+function WriteU8CharValue(byRef hChar, byRef valueInt, byVal notify)
+dim valueStr$
+
+// encode an 8-bit int
+res2 = BleEncode8(valueStr$, valueInt, 0)
+
+if res2 == 0 then
+    if notify == 1 then
+        print "\nCalling BleCharValueNotify() only..."
+        res2 = BleCharValueNotify(hChar, valueStr$)
+    else
+        res2 = BleCharValueWrite(hChar, valueStr$)
+    endif
+
+endif
+
+endfunc res2
