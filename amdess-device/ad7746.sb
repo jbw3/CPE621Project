@@ -4,12 +4,18 @@
 
 // AD7746 Constants
 #define AD7746_ADDRESS 0x48
-#define AD7746_REG_STATUS 0x00
-#define AD7746_REG_EXC_SETUP 0x09
+#define AD7746_REG_STATUS           0x00
+#define AD7746_REG_CAP_DATA_BASE    0x01
+#define AD7746_REG_CAP_SETUP        0x07
+#define AD7746_REG_EXC_SETUP        0x09
+#define AD7746_REG_CONFIGURATION    0x0A
 
 dim cdcRes   // result var unique to this file
 dim i2cHandle
-dim statusReg   // holds value of status reg
+dim statusReg       // status reg
+dim capSetupReg     // capacitance setup reg
+dim excSetupReg     // excitation setup reg
+dim configReg       // configuration reg
 
 dim uartStrLen
 dim uartRxStr$
@@ -46,7 +52,9 @@ endfunc endFuncVal
 ////
 function SampleCapData()
 
-// todo
+// read status reg
+cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_STATUS, statusReg)
+print "\nSTATUS: 0x", INTEGER.H'statusReg
 
 endfunc 1
 
@@ -57,13 +65,24 @@ sub SetupAD7746()
 
 cdcRes = i2cOpen(CLOCK_HZ, 0, i2cHandle)
 
-// read status reg first
+// set reg values
+// set EXC reg (enable EXCA, set VDD/2 excitation voltage level)
+cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_EXC_SETUP, 0x0B)
+// set CAP SET-UP reg (enable cap channel, use CIN2, set differential mode)
+cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_CAP_SETUP, 0xE0)
+// set CONFIGURATION reg (92.0ms conversion time, continuous conversion mode)
+cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_CONFIGURATION, 0x31)
+
+// read reg values
 cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_STATUS, statusReg)
+cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_EXC_SETUP, excSetupReg)
+cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_CAP_SETUP, capSetupReg)
+cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_CONFIGURATION, configReg)
 
-print "\nStatus reg: 0x", INTEGER.H'statusReg
-
-// set EXC reg
-//i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_EXC_SETUP, 0x00)
+print "\nSTATUS: 0x", INTEGER.H'statusReg
+print "\nEXC SET-UP: 0x", INTEGER.H'excSetupReg
+print "\nCAP SET-UP: 0x", INTEGER.H'capSetupReg
+print "\nCONFIGURATION: 0x", INTEGER.H'configReg
 
 endsub
 
@@ -74,7 +93,7 @@ endsub
 SetupAD7746()
 
 // start timer #2, 200ms, recurring
-TimerStart(0, 200, 1)
+TimerStart(0, 700, 1)
 
 onevent EVUARTRX    call HandleUartRx
 onevent EVTMR0      call SampleCapData
