@@ -70,6 +70,9 @@ public class BluetoothLeService extends Service
         {
             Log.d("onServicesDiscovered", "start");
 
+            // update Bluetooth GATT
+            bluetoothGatt = gatt;
+
             // debugging
             printServices(gatt);
 
@@ -137,6 +140,12 @@ public class BluetoothLeService extends Service
             {
                 onReceiveAlarmState(gatt, characteristic);
             }
+        }
+
+        @Override
+        public void onCharacteristicWrite(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
+        {
+            Log.d("onCharacteristicWrite", String.format("status: %s", (status == BluetoothGatt.GATT_SUCCESS ? "succeeded" : "failed")));
         }
 
         @Override
@@ -490,6 +499,30 @@ public class BluetoothLeService extends Service
         if (device != null)
         {
             Log.d("toggleArmState", "Found connected device");
+
+            DeviceInfo info = getDeviceInfo(address);
+            if (info != null)
+            {
+                byte[] value = new byte[1];
+                value[0] = (byte)(info.armed ? ARM_STATE_DISARMED : ARM_STATE_ARMED);
+                armStateChar.setValue(value);
+
+                Log.d("toggleArmState", String.format("Attempting to %s device", (value[0] == ARM_STATE_ARMED ? "arm" : "disarm")));
+
+                boolean ok = bluetoothGatt.writeCharacteristic(armStateChar);
+                if (ok)
+                {
+                    Log.d("toggleArmState", "writeCharacteristic succeeded for AMDeSS Arm State");
+                }
+                else
+                {
+                    Log.w("toggleArmState", "writeCharacteristic failed for AMDeSS Arm State");
+                }
+            }
+            else
+            {
+                Log.w("toggleArmState", String.format("Could not find device info for %s", address));
+            }
         }
         else
         {
