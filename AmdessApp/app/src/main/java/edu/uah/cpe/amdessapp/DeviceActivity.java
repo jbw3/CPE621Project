@@ -43,6 +43,7 @@ public class DeviceActivity extends AppCompatActivity
     private TextView connectionStatusTextView;
     private TextView armedStatusTextView;
     private TextView alarmTextView;
+    private TextView batteryTextView;
     private TextView servicesTextView;
     private Button armStateButton;
 
@@ -55,6 +56,7 @@ public class DeviceActivity extends AppCompatActivity
         connectionStatusTextView = (TextView) findViewById(R.id.connectionStatusTextView);
         armedStatusTextView = (TextView) findViewById(R.id.armStatusTextView);
         alarmTextView = (TextView) findViewById(R.id.alarmTextView);
+        batteryTextView = (TextView) findViewById(R.id.batteryTextView);
         servicesTextView = (TextView) findViewById(R.id.servicesTextView);
         armStateButton = (Button) findViewById(R.id.armButton);
 
@@ -133,6 +135,7 @@ public class DeviceActivity extends AppCompatActivity
             armedStatusTextView.setTextColor(Constants.GREEN_COLOR);
             armStateButton.setText("Arm");
             alarmTextView.setText("");
+            batteryTextView.setText("");
             servicesTextView.setText("Services:\n");
             return;
         }
@@ -180,6 +183,14 @@ public class DeviceActivity extends AppCompatActivity
             alarmState = "Alarm!";
         }
         alarmTextView.setText(alarmState);
+
+        // update battery level
+        String batteryLevel = "";
+        if (info.batteryLevel >= 0 && info.batteryLevel <= 100)
+        {
+            batteryLevel = String.format("Battery: %s%%", info.batteryLevel);
+        }
+        batteryTextView.setText(batteryLevel);
 
         // update services
         String services = "Services:\n";

@@ -33,6 +33,7 @@ public class BluetoothLeService extends Service
         public boolean connected = false;
         public boolean armed = false;
         public boolean alarming = false;
+        public int batteryLevel = -1;
         public LinkedList<UUID> services = new LinkedList<>();
     }
 
@@ -92,6 +93,7 @@ public class BluetoothLeService extends Service
             {
                 armStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE);
                 alarmStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE);
+                batteryLevelChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL);
                 if (armStateChar == null || alarmStateChar == null)
                 {
                     if (armStateChar == null)
@@ -109,6 +111,10 @@ public class BluetoothLeService extends Service
 
                     gatt.setCharacteristicNotification(armStateChar, true);
                     gatt.setCharacteristicNotification(alarmStateChar, true);
+                    if (batteryLevelChar != null)
+                    {
+                        gatt.setCharacteristicNotification(batteryLevelChar, true);
+                    }
 
                     // We cannot write both the arm state and alarm state descriptors
                     // at the same time. Thus, write the arm state now and the alarm state
@@ -135,13 +141,18 @@ public class BluetoothLeService extends Service
         {
             Log.d("onCharacteristicChanged", "start...");
 
-            if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE))
+            UUID uuid = characteristic.getUuid();
+            if (uuid.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE))
             {
                 onReceiveArmState(gatt, characteristic);
             }
-            else if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
+            else if (uuid.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
             {
                 onReceiveAlarmState(gatt, characteristic);
+            }
+            else if (uuid.equals(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL))
+            {
+                onReceiveBatteryUpdate(gatt, characteristic);
             }
         }
 
@@ -181,6 +192,13 @@ public class BluetoothLeService extends Service
                 descriptor.getUuid().equals(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION))
             {
                 setCccdNotificationsEnabled(gatt, alarmStateChar, true);
+            }
+            // when the alarm state descriptor write has completed, write the battery level descriptor
+            else if (batteryLevelChar != null &&
+                     descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL) &&
+                     descriptor.getUuid().equals(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION))
+            {
+                setCccdNotificationsEnabled(gatt, batteryLevelChar, true);
             }
         }
 
@@ -307,6 +325,7 @@ public class BluetoothLeService extends Service
     static private HashMap<String, DeviceInfo> infoMap = new HashMap<>();
     private BluetoothGattCharacteristic armStateChar = null;
     private BluetoothGattCharacteristic alarmStateChar = null;
+    private BluetoothGattCharacteristic batteryLevelChar = null;
     private CommandReceiver commandReceiver = new CommandReceiver();
     IntentFilter intentFilter = new IntentFilter();
 
@@ -364,7 +383,7 @@ public class BluetoothLeService extends Service
         infoMap.put(address, info);
     }
 
-    private void setArmStatus(String address, boolean armed)
+    private DeviceInfo getOrCreateInfo(String address)
     {
         // get the current info for the device
         DeviceInfo info = infoMap.get(address);
@@ -374,6 +393,14 @@ public class BluetoothLeService extends Service
         {
             info = new DeviceInfo();
         }
+
+        return info;
+    }
+
+    private void setArmStatus(String address, boolean armed)
+    {
+        // get the current info for the device
+        DeviceInfo info = getOrCreateInfo(address);
 
         info.armed = armed;
 
@@ -384,15 +411,19 @@ public class BluetoothLeService extends Service
     private void setAlarmStatus(String address, boolean alarming)
     {
         // get the current info for the device
-        DeviceInfo info = infoMap.get(address);
-
-        // if the info does not exist, create it
-        if (info == null)
-        {
-            info = new DeviceInfo();
-        }
+        DeviceInfo info = getOrCreateInfo(address);
 
         info.alarming = alarming;
+
+        // update the info in the map
+        infoMap.put(address, info);
+    }
+
+    private void setBatteryLevel(String address, int batteryLevel)
+    {
+        DeviceInfo info = getOrCreateInfo(address);
+
+        info.batteryLevel = batteryLevel;
 
         // update the info in the map
         infoMap.put(address, info);
@@ -472,6 +503,18 @@ public class BluetoothLeService extends Service
         }
     }
 
+    private void onReceiveBatteryUpdate(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
+    {
+        String address = gatt.getDevice().getAddress();
+
+        // read battery percentage from characteristic
+        int batteryLevel = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT8, 0);
+        setBatteryLevel(address, batteryLevel);
+
+        // send broadcast
+        broadcastUpdate(Constants.ACTION_DEVICE_BATTERY_LEVEL, address);
+    }
+
     private void sendAlarmNotification(BluetoothDevice device)
     {
         String name = device.getName();
@@ -482,7 +525,6 @@ public class BluetoothLeService extends Service
         }
         String text = String.format("Alarm from %s", name);
 
-//        Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
         RingtoneManager ringtoneManager = new RingtoneManager(getApplicationContext());
 
         // find sound

@@ -13,6 +13,9 @@ public class Constants
     public static final String ACTION_DEVICE_ALARM =
             "edu.uah.cpe.amdessapp.ACTION_DEVICE_ALARM";
 
+    public static final String ACTION_DEVICE_BATTERY_LEVEL =
+            "edu.uah.cpe.amdessapp.ACTION_DEVICE_BATTERY_LEVEL";
+
     public static final String ACTION_GATT_CONNECTED =
             "edu.uah.cpe.amdessapp.ACTION_GATT_CONNECTED";
 

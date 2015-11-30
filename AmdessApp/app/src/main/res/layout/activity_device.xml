@@ -46,6 +46,17 @@
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Battery: 100%"
+        android:textSize="10pt"
+        android:id="@+id/batteryTextView"
+        android:layout_below="@id/addressTextView"
+        android:layout_alignParentLeft="true"
+        android:layout_marginTop="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Disconnected"
         android:textSize="10pt"
         android:id="@+id/connectionStatusTextView"
@@ -60,7 +71,7 @@
         android:text="Disarmed"
         android:textSize="18pt"
         android:id="@+id/armStatusTextView"
-        android:layout_below="@id/connectionStatusTextView"
+        android:layout_below="@id/batteryTextView"
         android:layout_centerHorizontal="true"
         android:layout_marginTop="10dp"/>
 
