@@ -15,6 +15,9 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.database.Cursor;
+import android.media.RingtoneManager;
+import android.net.Uri;
 import android.os.Binder;
 import android.os.IBinder;
 import android.util.Log;
@@ -479,6 +482,39 @@ public class BluetoothLeService extends Service
         }
         String text = String.format("Alarm from %s", name);
 
+//        Uri alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        RingtoneManager ringtoneManager = new RingtoneManager(getApplicationContext());
+
+        // find sound
+        Uri alarmSound;
+        int idx = 0;
+        boolean found = false;
+        Cursor cursor = ringtoneManager.getCursor();
+        cursor.moveToFirst();
+        while (!cursor.isAfterLast())
+        {
+            if (cursor.getString(1).equals("Basic Bell"))
+            {
+                found = true;
+                break;
+            }
+            ++idx;
+            cursor.moveToNext();
+        }
+
+        if (found)
+        {
+            Log.d("sendAlarmNotification", "Found");
+            alarmSound = ringtoneManager.getRingtoneUri(idx);
+        }
+        else
+        {
+            Log.d("sendAlarmNotification", "Not found");
+            alarmSound = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+        }
+
+        Log.d("sendAlarmNotification", alarmSound.toString());
+
         NotificationManager notificationManager =
                 (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
         Notification.Builder builder =
@@ -486,6 +522,7 @@ public class BluetoothLeService extends Service
                         .setSmallIcon(android.R.drawable.ic_dialog_alert)
                         .setContentTitle("Alarm!")
                         .setContentText(text)
+                        .setSound(alarmSound)
                         .setVibrate(VIBRATE_PATTERN);
         Notification notification = builder.build();
         notificationManager.notify(NOTIFICATION_ID, notification);
