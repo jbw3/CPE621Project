@@ -33,6 +33,7 @@ public class BluetoothLeService extends Service
         public boolean connected = false;
         public boolean armed = false;
         public boolean alarming = false;
+        public int rawCapacitance = 0;
         public int batteryLevel = -1;
         public LinkedList<UUID> services = new LinkedList<>();
     }
@@ -62,6 +63,8 @@ public class BluetoothLeService extends Service
 
                 armStateChar = null;
                 alarmStateChar = null;
+                batteryLevelChar = null;
+                capChar = null;
 
                 setConnectionStatus(address, false);
 
@@ -93,8 +96,9 @@ public class BluetoothLeService extends Service
             {
                 armStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE);
                 alarmStateChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE);
+                capChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_AMDESS_CAPACITANCE);
                 batteryLevelChar = gattService.getCharacteristic(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL);
-                if (armStateChar == null || alarmStateChar == null)
+                if (armStateChar == null || alarmStateChar == null || capChar == null)
                 {
                     if (armStateChar == null)
                     {
@@ -104,6 +108,10 @@ public class BluetoothLeService extends Service
                     {
                         Log.w("onServicesDiscovered", "The device does not support the AMDeSS Alarm State characteristic");
                     }
+                    if (capChar == null)
+                    {
+                        Log.w("onServicesDiscovered", "The device does not support the AMDeSS Capacitance characteristic");
+                    }
                 }
                 else
                 {
@@ -111,6 +119,7 @@ public class BluetoothLeService extends Service
 
                     gatt.setCharacteristicNotification(armStateChar, true);
                     gatt.setCharacteristicNotification(alarmStateChar, true);
+                    gatt.setCharacteristicNotification(capChar, true);
 
                     // We cannot write both the arm state and alarm state descriptors
                     // at the same time. Thus, write the arm state now and the alarm state
@@ -145,6 +154,10 @@ public class BluetoothLeService extends Service
             else if (uuid.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE))
             {
                 onReceiveAlarmState(gatt, characteristic);
+            }
+            else if (uuid.equals(Constants.UUID_CHARACTERISTIC_AMDESS_CAPACITANCE))
+            {
+                onReceiveCapacitance(gatt, characteristic);
             }
         }
 
@@ -201,9 +214,15 @@ public class BluetoothLeService extends Service
             {
                 setCccdNotificationsEnabled(gatt, alarmStateChar, true);
             }
-            // when the alarm state descriptor write has completed, read the battery level descriptor
+            // when the alarm state descriptor write has completed, write the capacitance descriptor
+            else if (descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE) &&
+                     descriptor.getUuid().equals(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION))
+            {
+                setCccdNotificationsEnabled(gatt, capChar, true);
+            }
+            // when the capacitance descriptor write has completed, read the battery level
             else if (batteryLevelChar != null &&
-                     descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE) &&
+                     descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_CAPACITANCE) &&
                      descriptor.getUuid().equals(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION))
             {
                 gatt.readCharacteristic(batteryLevelChar);
@@ -334,6 +353,7 @@ public class BluetoothLeService extends Service
     private BluetoothGattCharacteristic armStateChar = null;
     private BluetoothGattCharacteristic alarmStateChar = null;
     private BluetoothGattCharacteristic batteryLevelChar = null;
+    private BluetoothGattCharacteristic capChar = null;
     private CommandReceiver commandReceiver = new CommandReceiver();
     IntentFilter intentFilter = new IntentFilter();
 
@@ -427,6 +447,17 @@ public class BluetoothLeService extends Service
         infoMap.put(address, info);
     }
 
+    private void setRawCapacitance(String address, int rawCapacitance)
+    {
+        // get the current info for the device
+        DeviceInfo info = getOrCreateInfo(address);
+
+        info.rawCapacitance = rawCapacitance;
+
+        // update the info in the map
+        infoMap.put(address, info);
+    }
+
     private void setBatteryLevel(String address, int batteryLevel)
     {
         DeviceInfo info = getOrCreateInfo(address);
@@ -509,6 +540,18 @@ public class BluetoothLeService extends Service
                 sendAlarmNotification(gatt.getDevice());
             }
         }
+    }
+
+    private void onReceiveCapacitance(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
+    {
+        String address = gatt.getDevice().getAddress();
+
+        // read capacitance from characteristic
+        int capacitance = characteristic.getIntValue(BluetoothGattCharacteristic.FORMAT_UINT32, 0);
+        setRawCapacitance(address, capacitance);
+
+        // send broadcast
+        broadcastUpdate(Constants.ACTION_DEVICE_CAPACITANCE, address);
     }
 
     private void onReceiveBatteryUpdate(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)

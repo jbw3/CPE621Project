@@ -13,6 +13,9 @@ public class Constants
     public static final String ACTION_DEVICE_ALARM =
             "edu.uah.cpe.amdessapp.ACTION_DEVICE_ALARM";
 
+    public static final String ACTION_DEVICE_CAPACITANCE =
+            "edu.uah.cpe.amdessapp.ACTION_DEVICE_CAPACITANCE";
+
     public static final String ACTION_DEVICE_BATTERY_LEVEL =
             "edu.uah.cpe.amdessapp.ACTION_DEVICE_BATTERY_LEVEL";
 
@@ -128,6 +131,7 @@ public class Constants
     // custom
     public static final UUID UUID_CHARACTERISTIC_AMDESS_ARM_STATE          = UUID.fromString("0000FEED-0000-1000-8000-00805F9B34FB");
     public static final UUID UUID_CHARACTERISTIC_AMDESS_ALARM_STATE        = UUID.fromString("0000FACE-0000-1000-8000-00805F9B34FB");
+    public static final UUID UUID_CHARACTERISTIC_AMDESS_CAPACITANCE        = UUID.fromString("0000CDCD-0000-1000-8000-00805F9B34FB");
 
     public static final HashMap<UUID, String> GATT_CHARACTERISTIC_NAMES;
     static
@@ -173,6 +177,7 @@ public class Constants
 
         GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_AMDESS_ARM_STATE, "AMDeSS Arm State");
         GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_AMDESS_ALARM_STATE, "AMDeSS Alarm State");
+        GATT_CHARACTERISTIC_NAMES.put(UUID_CHARACTERISTIC_AMDESS_CAPACITANCE, "AMDeSS Capacitance to Digital Converter Data");
     }
 
     public static final UUID UUID_DESCRIPTOR_ENVIRONMENTAL_SENSING_CONFIGURATION = UUID.fromString("0000290B-0000-1000-8000-00805F9B34FB");

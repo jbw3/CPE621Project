@@ -44,6 +44,7 @@ public class DeviceActivity extends AppCompatActivity
     private TextView armedStatusTextView;
     private TextView alarmTextView;
     private TextView batteryTextView;
+    private TextView capacitanceTextView;
     private TextView servicesTextView;
     private Button armStateButton;
 
@@ -57,6 +58,7 @@ public class DeviceActivity extends AppCompatActivity
         armedStatusTextView = (TextView) findViewById(R.id.armStatusTextView);
         alarmTextView = (TextView) findViewById(R.id.alarmTextView);
         batteryTextView = (TextView) findViewById(R.id.batteryTextView);
+        capacitanceTextView = (TextView) findViewById(R.id.capacitanceTextView);
         servicesTextView = (TextView) findViewById(R.id.servicesTextView);
         armStateButton = (Button) findViewById(R.id.armButton);
 
@@ -72,6 +74,8 @@ public class DeviceActivity extends AppCompatActivity
         intentFilter.addAction(Constants.ACTION_GATT_SERVICES_DISCOVERED);
         intentFilter.addAction(Constants.ACTION_DEVICE_ARM);
         intentFilter.addAction(Constants.ACTION_DEVICE_ALARM);
+        intentFilter.addAction(Constants.ACTION_DEVICE_BATTERY_LEVEL);
+        intentFilter.addAction(Constants.ACTION_DEVICE_CAPACITANCE);
     }
 
     @Override
@@ -136,6 +140,7 @@ public class DeviceActivity extends AppCompatActivity
             armStateButton.setText("Arm");
             alarmTextView.setText("");
             batteryTextView.setText("");
+            capacitanceTextView.setText("Capacitance:");
             servicesTextView.setText("Services:\n");
             return;
         }
@@ -183,6 +188,11 @@ public class DeviceActivity extends AppCompatActivity
             alarmState = "Alarm!";
         }
         alarmTextView.setText(alarmState);
+
+        // update capacitance
+        double capacitance = 4096.0 * info.rawCapacitance / 16777215.0;
+        String capStr = String.format("Capacitance: %.1f fF", capacitance);
+        capacitanceTextView.setText(capStr);
 
         // update battery level
         String batteryLevel = "";

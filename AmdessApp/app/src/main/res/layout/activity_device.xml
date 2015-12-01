@@ -47,11 +47,23 @@
         android:layout_height="wrap_content"
         android:textAppearance="?android:attr/textAppearanceLarge"
         android:text="Battery: 100%"
-        android:textSize="10pt"
+        android:textSize="9pt"
         android:id="@+id/batteryTextView"
         android:layout_below="@id/addressTextView"
         android:layout_alignParentLeft="true"
         android:layout_marginTop="8dp"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:text="Capacitance: 10 pF"
+        android:textSize="9pt"
+        android:id="@+id/capacitanceTextView"
+        android:layout_below="@id/addressTextView"
+        android:layout_toRightOf="@id/batteryTextView"
+        android:layout_marginTop="8dp"
+        android:layout_marginLeft="18dp"/>
 
     <TextView
         android:layout_width="wrap_content"
