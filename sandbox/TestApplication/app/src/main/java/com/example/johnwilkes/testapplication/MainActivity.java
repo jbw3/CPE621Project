@@ -11,6 +11,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.ServiceConnection;
+import android.graphics.Paint;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
@@ -24,7 +25,14 @@ import android.widget.Button;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.androidplot.xy.LineAndPointFormatter;
+import com.androidplot.xy.PointLabelFormatter;
+import com.androidplot.xy.SimpleXYSeries;
+import com.androidplot.xy.XYPlot;
+import com.androidplot.xy.XYSeries;
+
 import java.util.ArrayList;
+import java.util.Arrays;
 
 public class MainActivity extends AppCompatActivity
 {
@@ -33,6 +41,7 @@ public class MainActivity extends AppCompatActivity
 
     private TextView btoothTextView;
     private Button scanButton;
+    private XYPlot plot;
     private BluetoothAdapter btAdapter;
     BluetoothLeScanner bluetoothLeScanner;
     private Handler btScanHandler;
@@ -131,6 +140,7 @@ public class MainActivity extends AppCompatActivity
 
         btoothTextView = (TextView) findViewById(R.id.bluetoothstatus);
         scanButton = (Button) findViewById(R.id.btButton);
+        plot = (XYPlot) findViewById(R.id.mySimpleXYPlot);
 
         btScanHandler = new Handler();
 
@@ -148,6 +158,8 @@ public class MainActivity extends AppCompatActivity
             scanButton.setEnabled(true);
             bluetoothLeScanner = btAdapter.getBluetoothLeScanner();
         }
+
+        plotStuff();
     }
 
     @Override
@@ -216,6 +228,22 @@ public class MainActivity extends AppCompatActivity
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private void plotStuff()
+    {
+        Number[] series1Numbers = {1, 3, 2, 4, 7, 4, 5};
+
+        XYSeries series1 = new SimpleXYSeries(
+                Arrays.asList(series1Numbers),
+                SimpleXYSeries.ArrayFormat.Y_VALS_ONLY,
+                "Series 1"
+        );
+
+        LineAndPointFormatter series1Format = new LineAndPointFormatter();
+        series1Format.setPointLabelFormatter(new PointLabelFormatter());
+//        series1Format.configure(getApplicationContext(), );
+        plot.addSeries(series1, series1Format);
     }
 
     public void onBluetoothScan(View v)
