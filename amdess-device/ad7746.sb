@@ -1,7 +1,11 @@
 // ad7746.sb
 
-#define CLOCK_HZ 100000     // 100 KHz
-#define MAX_24BIT_VALUE  16777215    // 2^24 - 1
+#define SAMPLING_TIMER_NUM  0   // use timer 0 for sampling timer
+#define PCNT_RANGE_ALARM_THRESH 125     // 150% of calibration range used as delta to set thresholds
+#define ALARM_DEBOUNCE_COUNT 3          // 3 consecutive samples over threshold => ALARM!
+#define CALIBRATION_SAMPLE_COUNT 10     // take 10 samples to calibrate
+
+#define I2C_CLOCK_HZ 100000     // 100 KHz
 
 // AD7746 Constants
 #define AD7746_ADDRESS 0x48
@@ -14,48 +18,173 @@
 dim cdcRes   // result var unique to this file
 dim i2cHandle
 dim i2cWriteStr$, i2cReadStr$, i2cReadLen   // i2cWriteRead() vars
+
 dim statusReg       // status reg
 dim capSetupReg     // capacitance setup reg
 dim excSetupReg     // excitation setup reg
 dim configReg       // configuration reg
 dim dataReg         // data reg
+
 dim capValue        // measured capacitance value
-dim tmp
+dim tmp             // tmp value to be used for w/e -> treat like a GP register
+dim alarmDebounceCount  // # of consecutive samples over the threshold value
+dim calibratedZeroValue     // the dynamically-calibrated "0-value"
+dim calibratedHighValue     // the dynamically-calibrated HIGH threshold
+dim calibratedLowValue      // the dynamically-calibrated LOW threshold
+dim calibrThreshDelta       // the dynamically-calibrated threshold delta
+dim calibrSampleCntr        // counts # of calibration samples taken
+dim isCalibrating           // set to 1 when calibration is in progress
+dim wasAlreadySampling      // set when a calibration event interrupts an already
+                            // running timer (will be kept on when calibration finished)
 
-dim uartStrLen
-dim uartRxStr$
-dim termCmd$
-dim endFuncVal
-
-termCmd$ = "end\r"
+dim detectedOverflow        // set to 1 if we detect an overflow condition
+dim detectingOverThresh    // set to 1 if we begin detecting an alarm bc of values over the threshold
+dim detectingUnderThresh   // set to 1 if we begin detecting an alarm bc of values under the threshold
 
 ////
-//// HandleUartRx()
+//// StartSamplingAD7746()
 ////
-function HandleUartRx()
-    TimerStart(1,100,0)     // allow enough time for data to reach rx buffer
-endfunc 1
+sub StartSamplingAD7746(byRef alreadySampling)
 
-////
-//// ReadFromUart()
-////
-function ReadFromUart()
-
-endFuncVal = 1
-
-uartStrLen = uartRead(uartRxStr$)
-
-if strcmp(uartRxStr$, termCmd$) == 0 then
-    print "\nEnding program execution."
-    endFuncVal = 0
+// start sampling if timer is off
+if TimerRunning(SAMPLING_TIMER_NUM) == 0 then
+    TimerStart(SAMPLING_TIMER_NUM, 200, 1)   // start timer #2, 200ms, recurring
+    alreadySampling = 0
+else
+    alreadySampling = 1
 endif
 
-endfunc endFuncVal
+// reset debounce counter
+alarmDebounceCount = 0
+
+endsub
+
+////
+//// StopSamplingAD7746()
+////
+sub StopSamplingAD7746()
+
+if TimerRunning(SAMPLING_TIMER_NUM) != 0 then
+    TimerCancel(SAMPLING_TIMER_NUM)     // stop the timer
+endif
+
+endsub
+
+////
+//// IsAlarmCondition()
+////
+function IsAlarmCondition(capReading)
+
+tmp = 0     // return 0 to indicate no alarm (default)
+
+// only check for alarm condition if FINISHED calibrating
+if isCalibrating == 0 then
+
+    // is over threshold?
+    if capReading > calibratedHighValue then
+
+        // were we already checking against a high value?
+        if detectingOverThresh != 1 then
+            alarmDebounceCount = 0  // reset debounce b/c this is the first HIGH value
+            detectingOverThresh = 1    // set flag so we start counting up
+        endif
+
+        // increment debounce counter
+        alarmDebounceCount = alarmDebounceCount + 1
+
+    // is under threshold?
+    elseif capReading < calibratedLowValue then
+
+        // were we already checking against a low value?
+        if detectingUnderThresh != 1 then
+            alarmDebounceCount = 0      // reset debounce b/c this is the first LOW value
+            detectingUnderThresh = 1   // set flag so we start counting up
+        endif
+
+        // increment debounce counter
+        alarmDebounceCount = alarmDebounceCount + 1
+
+    // neither over or under...
+    else
+        alarmDebounceCount = 0      // reset debounce counter to 0
+        detectingUnderThresh = 0
+        detectingOverThresh = 0
+    endif
+
+    // check debounce counter value
+    if alarmDebounceCount >= ALARM_DEBOUNCE_COUNT then
+        tmp = 1     // return 1 to indicate an alarm!
+    endif
+
+endif
+
+endfunc tmp
+
+////
+//// DoCalibration()
+////
+sub DoCalibration(byRef capReading)
+
+//print "\nCalibrating...", calibrSampleCntr
+detectedOverflow = 0
+
+calibrSampleCntr = calibrSampleCntr + 1     // increment sample counter
+tmp = calibratedZeroValue   // cache last value
+
+calibratedZeroValue = calibratedZeroValue + capReading  // accumulate cap readings
+
+// if reading is higher, update highest encountered value
+if calibratedHighValue < capReading then
+    calibratedHighValue = capReading
+endif
+
+// if reading is lower, update lowest encountered value
+if calibratedLowValue > capReading then
+    calibratedLowValue = capReading
+endif
+
+// check for overflow...
+if calibratedZeroValue < tmp then
+    // we must have overflowed - the accumulation should only be greater than hte last value!
+    print "\n\nDetected overflow!!\n"
+    detectedOverflow = 1
+
+    // pop last value from cache
+    calibratedZeroValue = tmp
+endif
+
+// check if we're done calibrating
+if calibrSampleCntr >= CALIBRATION_SAMPLE_COUNT || detectedOverflow == 1 then
+
+    // done calibrating
+    isCalibrating = 0
+
+    // only stop the sampling timer if we were NOT already sampling data
+    if wasAlreadySampling == 0 then
+        StopSamplingAD7746()    // kill the sampling timer until app starts sampling...
+    endif
+
+    tmp = calibratedHighValue - calibratedLowValue  // get range of measured values
+    calibrThreshDelta = (tmp * PCNT_RANGE_ALARM_THRESH) / 100       // take specified % of range as delta
+
+    // compute final zero-value
+    calibratedZeroValue = calibratedZeroValue / calibrSampleCntr
+    calibratedHighValue = calibratedZeroValue + calibrThreshDelta
+    calibratedLowValue = calibratedZeroValue - calibrThreshDelta
+
+    print "\nCalibration finished. Zero value:", calibratedZeroValue
+    print "\nDelta:", calibrThreshDelta
+    print "\nHigh threshold:", calibratedHighValue
+    print "\nLow threshold:", calibratedLowValue
+
+endif
+
+endsub
 
 ////
 //// SampleCapData()
 ////
-function SampleCapData()
+function SampleAD7746Data(byRef capReading)
 
 // read status reg
 cdcRes = i2cReadReg8(AD7746_ADDRESS, AD7746_REG_STATUS, statusReg)
@@ -68,34 +197,53 @@ i2cReadLen = 3      // read 3B
 if statusReg % 2 == 0 then
 
     // the 0-bit (RDYCAP) is low, indicating new data is ready!
-    dataReg = 0x00
+    capReading = 0x00
     cdcRes = i2cWriteRead(AD7746_ADDRESS, i2cWriteStr$, i2cReadStr$, i2cReadLen)
     //print "\nRaw data:", i2cReadStr$
 
     cdcRes = BleDecodeU8(i2cReadStr$, tmp, 0)   // HIGH
-    dataReg = tmp   // get high byte
+    capReading = tmp   // get high byte
     cdcRes = BleDecodeU8(i2cReadStr$, tmp, 1)   // MED
-    dataReg = dataReg << 8  // shift up
-    dataReg = dataReg | tmp // get medium byte
+    capReading = capReading << 8  // shift up
+    capReading = capReading | tmp // get medium byte
     cdcRes = BleDecodeU8(i2cReadStr$, tmp, 2)   // LOW
-    dataReg = dataReg << 8  // shift up
-    dataReg = dataReg | tmp // get low byte
+    capReading = capReading << 8  // shift up
+    capReading = capReading | tmp // get low byte
 
-    //capValue = (4000 * dataReg) / MAX_24BIT_VALUE
-    //print "\nInteger data: 0x", INTEGER.H'dataReg
-    //print "\nCapacitance: (fF)", capValue
-    print "\nCapData:", dataReg
+    print "\nCapData:", capReading
+
+    if isCalibrating == 1 then
+        DoCalibration(capReading)   // calibrate w/ this sample
+    endif
 
 endif
 
 endfunc 1
 
 ////
+//// RecalibrateThresh())
+////
+sub RecalibrateThresh()
+
+    // init calibration vars
+    isCalibrating = 1
+    calibrSampleCntr = 0
+    calibratedZeroValue = 0
+    calibratedHighValue = 0
+    calibratedLowValue = 0xFFFFFF   // max 24-bit value
+
+    StartSamplingAD7746(wasAlreadySampling)
+
+    print "\nBeginning calibration..."
+
+endsub
+
+////
 //// SetupAD7746()
 ////
 sub SetupAD7746()
 
-cdcRes = i2cOpen(CLOCK_HZ, 0, i2cHandle)
+cdcRes = i2cOpen(I2C_CLOCK_HZ, 0, i2cHandle)
 
 // set reg values
 // set EXC reg (enable EXCA, set VDD/2 excitation voltage level)
@@ -116,19 +264,7 @@ print "\nEXC SET-UP: 0x", INTEGER.H'excSetupReg
 print "\nCAP SET-UP: 0x", INTEGER.H'capSetupReg
 print "\nCONFIGURATION: 0x", INTEGER.H'configReg
 
+// calibrate threshold
+RecalibrateThresh()
+
 endsub
-
-////
-//// main()
-////
-
-SetupAD7746()
-
-// start timer #2, 200ms, recurring
-TimerStart(0, 200, 1)
-
-onevent EVUARTRX    call HandleUartRx
-onevent EVTMR0      call SampleCapData
-onevent EVTMR1      call ReadFromUart
-
-waitevent

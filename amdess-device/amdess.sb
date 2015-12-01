@@ -1,4 +1,5 @@
 #include "amdessServiceLib.sblib"
+#include "ad7746.sb"
 
 ///////////////////////////////
 // program settings
@@ -25,6 +26,8 @@ dim uartRes         // result of uart commands
 dim unknownCmd      // flags an unknown command
 dim endFuncVal      // variable for endfunc
 dim conn            // connection handle
+dim r0              // "register 0" (just a variable that can be used local to
+                    // any function, like a GP register)
 
 // ble handles
 dim hAmdessSvc       // AMDeSS service handle
@@ -101,6 +104,33 @@ sub StartBle()
 endsub
 
 ////
+//// UpdateIsSampling()
+////
+sub UpdateIsSampling(byRef armStateInt, byRef alarmStateInt)
+
+    // only update whether or not we're sampling if we're not in the middle of calibrating
+    if isCalibrating != 1 then
+        // we sample if we are either (armed AND not alarming) OR if the Notify CCCD bit is set for capacitance debug data
+        if armStateInt == 1 && alarmStateInt == 0 then
+            StartSamplingAD7746(r0)
+        else
+            StopSamplingAD7746()
+        endif
+    endif
+
+endsub
+
+////
+//// ReadArmState()
+////
+function ReadArmState(byRef armStateInt)
+    res = ReadU8CharValue(hArmStateChar, armStateInt)
+    if res != 0 then
+        print "\nUnable to read ARM STATE", res
+    endif
+endfunc res
+
+////
 //// ReadAlarmState()
 ////
 function ReadAlarmState(byRef alarmStateInt)
@@ -111,6 +141,23 @@ function ReadAlarmState(byRef alarmStateInt)
 endfunc res
 
 ////
+//// OnAlarmStateWritten()
+////
+sub OnAlarmStateWritten()
+
+    // update whether or not to continue sampling
+    res = ReadArmState(armState)
+    res = ReadAlarmState(alarmState)
+    UpdateIsSampling(armState, alarmState)
+
+    // if alarm was just turned off, then recalibrate!
+    //if alarmState == 0 then
+    //    RecalibrateThresh()
+    //endif
+
+endsub
+
+////
 //// WriteAlarmState()
 ////
 function WriteAlarmState(byVal alarmStateInt)
@@ -118,7 +165,10 @@ function WriteAlarmState(byVal alarmStateInt)
     res = WriteU8CharValue(hAlarmStateChar, alarmStateInt, notifyAlarmState)
     if res != 0 then
         print "\nUnable to write ALARM STATE", res
+    else
+        OnAlarmStateWritten()   // call OnWritten() handler
     endif
+
 endfunc res
 
 ////
@@ -128,25 +178,17 @@ sub OnArmStateWritten()
 
     // whether we are now armed or disarmed, we need to ensure
     // that alarm state is now OFF
-
     res = ReadAlarmState(alarmState)    // get current state
     if alarmState == 1 then
         alarmState = 0    // turn off alarm
         res = WriteAlarmState(alarmState)   // write/notify
     endif
 
-endsub
+    // update whether or not to continue sampling CDC data
+    res = ReadArmState(armState)
+    UpdateIsSampling(armState, alarmState)
 
-////
-//// ReadArmState()
-//// Return code: 0 = success, Nonzero = failure
-////
-function ReadArmState(byRef armStateInt)
-    res = ReadU8CharValue(hArmStateChar, armStateInt)
-    if res != 0 then
-        print "\nUnable to read ARM STATE", res
-    endif
-endfunc res
+endsub
 
 ////
 //// WriteArmState()
@@ -209,6 +251,20 @@ uartRxStr$ = ""     // reset the variable
 endfunc endFuncVal
 
 ////
+//// OnConnected()
+////
+sub OnConnected()
+
+    // read arm/alarm state
+    res = ReadArmState(armState)
+    res = ReadAlarmState(alarmState)
+
+    // see if we need to start sampling
+    UpdateIsSampling(armState, alarmState)
+
+endsub
+
+////
 //// HandleBleMsg()
 ///
 function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
@@ -217,6 +273,7 @@ function HandleBleMsg(byval msgId as integer, byval msgCtx as integer)
         case 0
             // received new connection! save connection handle
             conn = msgCtx
+            OnConnected()
         case 1
             print "\nConnection lost."
             exitfunc 0  // we successfully disconnected!
@@ -249,12 +306,17 @@ endfunc 1
 ////
 function HandleCharValWritten(byVal hChar, byVal offset, byVal length)
 
-if hChar == hAlarmStateChar then
-    print "\nALARM STATE written by client"
-elseif hChar == hArmStateChar then
-    print "\nARM STATE written by client"
-    OnArmStateWritten()
-endif
+    if hChar == hAlarmStateChar then
+
+        print "\nALARM STATE written by client"
+        OnAlarmStateWritten()
+
+    elseif hChar == hArmStateChar then
+
+        print "\nARM STATE written by client"
+        OnArmStateWritten()
+
+    endif
 
 endfunc 1
 
@@ -265,6 +327,31 @@ function HandleUartRx()
     TimerStart(3,100,0)     // allow enough time for data to reach rx buffer
 endfunc 1
 
+////
+//// DoSampleCapData()
+////
+function DoSampleCapData()
+
+    // sample AD7746
+    res = SampleAD7746Data(r0)
+
+    res = ReadAlarmState(alarmState)
+    res = ReadArmState(armState)
+
+    // check for alarm condition (if not already alarming!)
+    if alarmState == 0 then
+
+        // if ARMED and IsAlarmCondition()
+        if armState == 1 && IsAlarmCondition(r0) == 1 then
+            // we have an alarm condition!
+            res = WriteAlarmState(1)
+        endif
+
+    endif
+
+    // todo: send capacitance values...
+
+endfunc 1
 
 ////
 //// main()
@@ -276,9 +363,13 @@ onevent EVBLEMSG            call HandleBleMsg
 onevent EVCHARVAL           call HandleCharValWritten
 onevent EVCHARCCCD          call HandleCCCDWritten
 onevent EVUARTRX            call HandleUartRx
+onevent EVTMR0              call DoSampleCapData
 onevent EVTMR3              call ReadFromUart
 
 // init services and start advertising
 StartBle()
+
+// init/calibrate AD7746
+SetupAD7746()
 
 waitevent
