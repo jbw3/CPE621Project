@@ -111,10 +111,6 @@ public class BluetoothLeService extends Service
 
                     gatt.setCharacteristicNotification(armStateChar, true);
                     gatt.setCharacteristicNotification(alarmStateChar, true);
-                    if (batteryLevelChar != null)
-                    {
-                        gatt.setCharacteristicNotification(batteryLevelChar, true);
-                    }
 
                     // We cannot write both the arm state and alarm state descriptors
                     // at the same time. Thus, write the arm state now and the alarm state
@@ -150,9 +146,21 @@ public class BluetoothLeService extends Service
             {
                 onReceiveAlarmState(gatt, characteristic);
             }
-            else if (uuid.equals(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL))
+        }
+
+        @Override
+        public void onCharacteristicRead(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic, int status)
+        {
+            if (status == BluetoothGatt.GATT_SUCCESS)
             {
-                onReceiveBatteryUpdate(gatt, characteristic);
+                if (characteristic.getUuid().equals(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL))
+                {
+                    onReceiveBatteryUpdate(gatt, characteristic);
+                }
+            }
+            else
+            {
+                Log.w("onCharacteristicWrite", "Read failed");
             }
         }
 
@@ -193,12 +201,12 @@ public class BluetoothLeService extends Service
             {
                 setCccdNotificationsEnabled(gatt, alarmStateChar, true);
             }
-            // when the alarm state descriptor write has completed, write the battery level descriptor
+            // when the alarm state descriptor write has completed, read the battery level descriptor
             else if (batteryLevelChar != null &&
-                     descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_BATTERY_LEVEL) &&
+                     descriptor.getCharacteristic().getUuid().equals(Constants.UUID_CHARACTERISTIC_AMDESS_ALARM_STATE) &&
                      descriptor.getUuid().equals(Constants.UUID_DESCRIPTOR_CLIENT_CHARACTERISTIC_CONFIGURATION))
             {
-                setCccdNotificationsEnabled(gatt, batteryLevelChar, true);
+                gatt.readCharacteristic(batteryLevelChar);
             }
         }
 
