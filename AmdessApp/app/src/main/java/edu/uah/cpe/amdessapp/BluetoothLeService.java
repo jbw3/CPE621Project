@@ -144,8 +144,6 @@ public class BluetoothLeService extends Service
         @Override
         public void onCharacteristicChanged(BluetoothGatt gatt, BluetoothGattCharacteristic characteristic)
         {
-            Log.d("onCharacteristicChanged", "start...");
-
             UUID uuid = characteristic.getUuid();
             if (uuid.equals(Constants.UUID_CHARACTERISTIC_AMDESS_ARM_STATE))
             {

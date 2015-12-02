@@ -166,14 +166,12 @@ public class DeviceActivity extends AppCompatActivity
         int armedColor;
         if (info.armed)
         {
-            Log.d("syncWithInfo", "Armed");
             armedStatus = "Armed";
             armedColor = Constants.RED_COLOR;
             armStateButton.setText("Disarm");
         }
         else
         {
-            Log.d("syncWithInfo", "Disarmed");
             armedStatus = "Disarmed";
             armedColor = Constants.GREEN_COLOR;
             armStateButton.setText("Arm");
