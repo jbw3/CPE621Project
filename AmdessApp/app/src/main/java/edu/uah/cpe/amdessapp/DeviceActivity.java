@@ -6,6 +6,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -13,6 +14,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import com.androidplot.xy.BoundaryMode;
 import com.androidplot.xy.LineAndPointFormatter;
 import com.androidplot.xy.PointLabelFormatter;
 import com.androidplot.xy.XYPlot;
@@ -64,11 +66,11 @@ public class DeviceActivity extends AppCompatActivity
         capacitanceTextView = (TextView) findViewById(R.id.capacitanceTextView);
         armStateButton = (Button) findViewById(R.id.armButton);
         capPlot = (XYPlot) findViewById(R.id.capXYPlot);
+        capPlot.setRangeBoundaries(9.0, 18.0, BoundaryMode.FIXED);
 
         // create series for plot
         capSeries = new DynamicXYSeries("Capacitance Values", 200);
-        LineAndPointFormatter capSeriesFormat = new LineAndPointFormatter();
-        capSeriesFormat.setPointLabelFormatter(new PointLabelFormatter());
+        LineAndPointFormatter capSeriesFormat = new LineAndPointFormatter(Color.BLUE, Color.BLUE, null, null);
         capPlot.addSeries(capSeries, capSeriesFormat);
 
         ActionBar actionBar = getActionBar();
@@ -198,8 +200,8 @@ public class DeviceActivity extends AppCompatActivity
         alarmTextView.setText(alarmState);
 
         // update capacitance
-        double capacitance = 4096.0 * info.rawCapacitance / 16777215.0;
-        String capStr = String.format("Capacitance: %.1f fF", capacitance);
+        double capacitance = (info.rawCapacitance * 8.192 / 16777215.0) + 9.55754;
+        String capStr = String.format("Capacitance: %.2f pF", capacitance);
         capacitanceTextView.setText(capStr);
         capSeries.addValue(capacitance);
         capPlot.redraw();
