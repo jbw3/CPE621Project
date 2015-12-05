@@ -13,7 +13,9 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import java.util.UUID;
+import com.androidplot.xy.LineAndPointFormatter;
+import com.androidplot.xy.PointLabelFormatter;
+import com.androidplot.xy.XYPlot;
 
 public class DeviceActivity extends AppCompatActivity
 {
@@ -45,8 +47,9 @@ public class DeviceActivity extends AppCompatActivity
     private TextView alarmTextView;
     private TextView batteryTextView;
     private TextView capacitanceTextView;
-    private TextView servicesTextView;
     private Button armStateButton;
+    private XYPlot capPlot;
+    private DynamicXYSeries capSeries;
 
     @Override
     protected void onCreate(Bundle savedInstanceState)
@@ -59,8 +62,14 @@ public class DeviceActivity extends AppCompatActivity
         alarmTextView = (TextView) findViewById(R.id.alarmTextView);
         batteryTextView = (TextView) findViewById(R.id.batteryTextView);
         capacitanceTextView = (TextView) findViewById(R.id.capacitanceTextView);
-        servicesTextView = (TextView) findViewById(R.id.servicesTextView);
         armStateButton = (Button) findViewById(R.id.armButton);
+        capPlot = (XYPlot) findViewById(R.id.capXYPlot);
+
+        // create series for plot
+        capSeries = new DynamicXYSeries("Capacitance Values", 200);
+        LineAndPointFormatter capSeriesFormat = new LineAndPointFormatter();
+        capSeriesFormat.setPointLabelFormatter(new PointLabelFormatter());
+        capPlot.addSeries(capSeries, capSeriesFormat);
 
         ActionBar actionBar = getActionBar();
         if (actionBar != null)
@@ -141,7 +150,8 @@ public class DeviceActivity extends AppCompatActivity
             alarmTextView.setText("");
             batteryTextView.setText("");
             capacitanceTextView.setText("Capacitance:");
-            servicesTextView.setText("Services:\n");
+            capSeries.clear();
+            capPlot.redraw();
             return;
         }
 
@@ -191,6 +201,8 @@ public class DeviceActivity extends AppCompatActivity
         double capacitance = 4096.0 * info.rawCapacitance / 16777215.0;
         String capStr = String.format("Capacitance: %.1f fF", capacitance);
         capacitanceTextView.setText(capStr);
+        capSeries.addValue(capacitance);
+        capPlot.redraw();
 
         // update battery level
         String batteryLevel = "";
@@ -199,20 +211,5 @@ public class DeviceActivity extends AppCompatActivity
             batteryLevel = String.format("Battery: %s%%", info.batteryLevel);
         }
         batteryTextView.setText(batteryLevel);
-
-        // update services
-        String services = "Services:\n";
-        for (UUID id : info.services)
-        {
-            String serviceName = Constants.GATT_SERVICE_NAMES.get(id);
-            if (serviceName == null)
-            {
-                serviceName = "???";
-            }
-
-            services = services.concat(String.format("%s (%s)\n", id.toString(), serviceName));
-        }
-
-        servicesTextView.setText(services);
     }
 }

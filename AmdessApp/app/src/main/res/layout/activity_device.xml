@@ -100,14 +100,15 @@
         android:layout_centerInParent="true"
         android:onClick="onArmDisarmClicked"/>
 
-    <TextView
+    <com.androidplot.xy.XYPlot
+        android:id="@+id/capXYPlot"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:textAppearance="?android:attr/textAppearanceLarge"
-        android:text="Services:\n"
-        android:textSize="8pt"
-        android:id="@+id/servicesTextView"
         android:layout_below="@id/armButton"
         android:layout_marginTop="15dp"
-        android:layout_alignParentStart="true"/>
+        androidPlot.title="Capacitance"/>
+    <!--
+        androidPlot.titleWidget.labelPaint.textSize="20dp"
+        androidPlot.graphWidget.maginTop="25dp"/>
+        -->
 </RelativeLayout>
