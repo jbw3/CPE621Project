@@ -1,9 +1,10 @@
 // ad7746.sb
 
-#define SAMPLING_TIMER_NUM  0   // use timer 0 for sampling timer
-#define PCNT_RANGE_ALARM_THRESH 125     // 150% of calibration range used as delta to set thresholds
+#define SAMPLING_TIMER_NUM  0           // use timer 0 for sampling timer
+#define PCNT_RANGE_ALARM_THRESH 140     // 140% of calibration range used as delta to set thresholds
 #define ALARM_DEBOUNCE_COUNT 3          // 3 consecutive samples over threshold => ALARM!
 #define CALIBRATION_SAMPLE_COUNT 10     // take 10 samples to calibrate
+#define ALARM_THRESHOLD     0xA00000    // threshold for alarm trigger
 
 #define I2C_CLOCK_HZ 100000     // 100 KHz
 
@@ -14,6 +15,11 @@
 #define AD7746_REG_CAP_SETUP        0x07
 #define AD7746_REG_EXC_SETUP        0x09
 #define AD7746_REG_CONFIGURATION    0x0A
+#define AD7746_REG_CAP_DAC_A        0x0B
+#define AD7746_REG_CAP_DAC_B        0x0C
+
+#define CAP_DAC_ENABLE      0x80
+#define CAP_DAC_13_65354pF  0x66    // 0x66 sets CAP DAC to ~13.65354pF
 
 dim cdcRes   // result var unique to this file
 dim i2cHandle
@@ -29,12 +35,12 @@ dim capValue        // measured capacitance value
 dim tmp             // tmp value to be used for w/e -> treat like a GP register
 dim alarmDebounceCount  // # of consecutive samples over the threshold value
 dim calibratedZeroValue     // the dynamically-calibrated "0-value"
-dim calibratedHighValue     // the dynamically-calibrated HIGH threshold
-dim calibratedLowValue      // the dynamically-calibrated LOW threshold
-dim calibrThreshDelta       // the dynamically-calibrated threshold delta
-dim calibrSampleCntr        // counts # of calibration samples taken
-dim isCalibrating           // set to 1 when calibration is in progress
-dim wasAlreadySampling      // set when a calibration event interrupts an already
+//dim calibratedHighValue     // the dynamically-calibrated HIGH threshold
+//dim calibratedLowValue      // the dynamically-calibrated LOW threshold
+//dim calibrThreshDelta       // the dynamically-calibrated threshold delta
+//dim calibrSampleCntr        // counts # of calibration samples taken
+//dim isCalibrating           // set to 1 when calibration is in progress
+//dim wasAlreadySampling      // set when a calibration event interrupts an already
                             // running timer (will be kept on when calibration finished)
 
 dim detectedOverflow        // set to 1 if we detect an overflow condition
@@ -44,14 +50,11 @@ dim detectingUnderThresh   // set to 1 if we begin detecting an alarm bc of valu
 ////
 //// StartSamplingAD7746()
 ////
-sub StartSamplingAD7746(byRef alreadySampling)
+sub StartSamplingAD7746()
 
 // start sampling if timer is off
 if TimerRunning(SAMPLING_TIMER_NUM) == 0 then
-    TimerStart(SAMPLING_TIMER_NUM, 200, 1)   // start timer #2, 200ms, recurring
-    alreadySampling = 0
-else
-    alreadySampling = 1
+    TimerStart(SAMPLING_TIMER_NUM, 120, 1)   // start timer #2, 200ms, recurring
 endif
 
 // reset debounce counter
@@ -78,37 +81,35 @@ function IsAlarmCondition(capReading)
 tmp = 0     // return 0 to indicate no alarm (default)
 
 // only check for alarm condition if FINISHED calibrating
-if isCalibrating == 0 then
+//if isCalibrating == 0 then
 
     // is over threshold?
-    if capReading > calibratedHighValue then
+    if capReading > ALARM_THRESHOLD then
 
         // were we already checking against a high value?
-        if detectingOverThresh != 1 then
-            alarmDebounceCount = 0  // reset debounce b/c this is the first HIGH value
-            detectingOverThresh = 1    // set flag so we start counting up
-        endif
+        // if detectingOverThresh != 1 then
+        //     alarmDebounceCount = 0  // reset debounce b/c this is the first HIGH value
+        //     detectingOverThresh = 1    // set flag so we start counting up
+        // endif
 
         // increment debounce counter
         alarmDebounceCount = alarmDebounceCount + 1
 
     // is under threshold?
-    elseif capReading < calibratedLowValue then
-
-        // were we already checking against a low value?
-        if detectingUnderThresh != 1 then
-            alarmDebounceCount = 0      // reset debounce b/c this is the first LOW value
-            detectingUnderThresh = 1   // set flag so we start counting up
-        endif
-
-        // increment debounce counter
-        alarmDebounceCount = alarmDebounceCount + 1
+    // elseif capReading < calibratedLowValue then
+    //
+    //     // were we already checking against a low value?
+    //     if detectingUnderThresh != 1 then
+    //         alarmDebounceCount = 0      // reset debounce b/c this is the first LOW value
+    //         detectingUnderThresh = 1   // set flag so we start counting up
+    //     endif
+    //
+    //     // increment debounce counter
+    //     alarmDebounceCount = alarmDebounceCount + 1
 
     // neither over or under...
     else
         alarmDebounceCount = 0      // reset debounce counter to 0
-        detectingUnderThresh = 0
-        detectingOverThresh = 0
     endif
 
     // check debounce counter value
@@ -116,70 +117,70 @@ if isCalibrating == 0 then
         tmp = 1     // return 1 to indicate an alarm!
     endif
 
-endif
+//endif
 
 endfunc tmp
 
 ////
 //// DoCalibration()
 ////
-sub DoCalibration(byRef capReading)
-
-//print "\nCalibrating...", calibrSampleCntr
-detectedOverflow = 0
-
-calibrSampleCntr = calibrSampleCntr + 1     // increment sample counter
-tmp = calibratedZeroValue   // cache last value
-
-calibratedZeroValue = calibratedZeroValue + capReading  // accumulate cap readings
-
-// if reading is higher, update highest encountered value
-if calibratedHighValue < capReading then
-    calibratedHighValue = capReading
-endif
-
-// if reading is lower, update lowest encountered value
-if calibratedLowValue > capReading then
-    calibratedLowValue = capReading
-endif
-
-// check for overflow...
-if calibratedZeroValue < tmp then
-    // we must have overflowed - the accumulation should only be greater than hte last value!
-    print "\n\nDetected overflow!!\n"
-    detectedOverflow = 1
-
-    // pop last value from cache
-    calibratedZeroValue = tmp
-endif
-
-// check if we're done calibrating
-if calibrSampleCntr >= CALIBRATION_SAMPLE_COUNT || detectedOverflow == 1 then
-
-    // done calibrating
-    isCalibrating = 0
-
-    // only stop the sampling timer if we were NOT already sampling data
-    if wasAlreadySampling == 0 then
-        StopSamplingAD7746()    // kill the sampling timer until app starts sampling...
-    endif
-
-    tmp = calibratedHighValue - calibratedLowValue  // get range of measured values
-    calibrThreshDelta = (tmp * PCNT_RANGE_ALARM_THRESH) / 100       // take specified % of range as delta
-
-    // compute final zero-value
-    calibratedZeroValue = calibratedZeroValue / calibrSampleCntr
-    calibratedHighValue = calibratedZeroValue + calibrThreshDelta
-    calibratedLowValue = calibratedZeroValue - calibrThreshDelta
-
-    print "\nCalibration finished. Zero value:", calibratedZeroValue
-    print "\nDelta:", calibrThreshDelta
-    print "\nHigh threshold:", calibratedHighValue
-    print "\nLow threshold:", calibratedLowValue
-
-endif
-
-endsub
+// sub DoCalibration(byRef capReading)
+//
+// //print "\nCalibrating...", calibrSampleCntr
+// detectedOverflow = 0
+//
+// calibrSampleCntr = calibrSampleCntr + 1     // increment sample counter
+// tmp = calibratedZeroValue   // cache last value
+//
+// calibratedZeroValue = calibratedZeroValue + capReading  // accumulate cap readings
+//
+// // if reading is higher, update highest encountered value
+// if calibratedHighValue < capReading then
+//     calibratedHighValue = capReading
+// endif
+//
+// // if reading is lower, update lowest encountered value
+// if calibratedLowValue > capReading then
+//     calibratedLowValue = capReading
+// endif
+//
+// // check for overflow...
+// if calibratedZeroValue < tmp then
+//     // we must have overflowed - the accumulation should only be greater than hte last value!
+//     print "\n\nDetected overflow!!\n"
+//     detectedOverflow = 1
+//
+//     // pop last value from cache
+//     calibratedZeroValue = tmp
+// endif
+//
+// // check if we're done calibrating
+// if calibrSampleCntr >= CALIBRATION_SAMPLE_COUNT || detectedOverflow == 1 then
+//
+//     // done calibrating
+//     isCalibrating = 0
+//
+//     // only stop the sampling timer if we were NOT already sampling data
+//     // if wasAlreadySampling == 0 then
+//     //     StopSamplingAD7746()    // kill the sampling timer until app starts sampling...
+//     // endif
+//
+//     tmp = calibratedHighValue - calibratedLowValue  // get range of measured values
+//     calibrThreshDelta = (tmp * PCNT_RANGE_ALARM_THRESH) / 100       // take specified % of range as delta
+//
+//     // compute final zero-value
+//     calibratedZeroValue = calibratedZeroValue / calibrSampleCntr
+//     calibratedHighValue = calibratedZeroValue + calibrThreshDelta
+//     calibratedLowValue = calibratedZeroValue - calibrThreshDelta
+//
+//     print "\nCalibration finished. Zero value:", calibratedZeroValue
+//     print "\nDelta:", calibrThreshDelta
+//     print "\nHigh threshold:", calibratedHighValue
+//     print "\nLow threshold:", calibratedLowValue
+//
+// endif
+//
+// endsub
 
 ////
 //// SampleCapData()
@@ -212,9 +213,9 @@ if statusReg % 2 == 0 then
 
     print "\nCapData:", capReading
 
-    if isCalibrating == 1 then
-        DoCalibration(capReading)   // calibrate w/ this sample
-    endif
+    // if isCalibrating == 1 then
+    //     DoCalibration(capReading)   // calibrate w/ this sample
+    // endif
 
 endif
 
@@ -223,20 +224,20 @@ endfunc 1
 ////
 //// RecalibrateThresh())
 ////
-sub RecalibrateThresh()
-
-    // init calibration vars
-    isCalibrating = 1
-    calibrSampleCntr = 0
-    calibratedZeroValue = 0
-    calibratedHighValue = 0
-    calibratedLowValue = 0xFFFFFF   // max 24-bit value
-
-    StartSamplingAD7746(wasAlreadySampling)
-
-    print "\nBeginning calibration..."
-
-endsub
+// sub RecalibrateThresh()
+//
+//     // init calibration vars
+//     isCalibrating = 1
+//     calibrSampleCntr = 0
+//     calibratedZeroValue = 0
+//     calibratedHighValue = 0
+//     calibratedLowValue = 0xFFFFFF   // max 24-bit value
+//
+//     StartSamplingAD7746(wasAlreadySampling)
+//
+//     print "\nBeginning calibration..."
+//
+// endsub
 
 ////
 //// SetupAD7746()
@@ -250,6 +251,10 @@ cdcRes = i2cOpen(I2C_CLOCK_HZ, 0, i2cHandle)
 cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_EXC_SETUP, 0x0B)
 // set CAP SET-UP reg (enable cap channel, use CIN2, set single-ended mode)
 cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_CAP_SETUP, 0xC0)
+// set CAP DAC A reg (enable, set to ~8pF)
+cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_CAP_DAC_A, CAP_DAC_ENABLE | CAP_DAC_13_65354pF)
+// set CAP DAC B reg (enable, set to 0pF)
+cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_CAP_DAC_B, 0x80)
 // set CONFIGURATION reg (92.0ms conversion time, continuous conversion mode)
 cdcRes = i2cWriteReg8(AD7746_ADDRESS, AD7746_REG_CONFIGURATION, 0x31)
 
@@ -265,6 +270,6 @@ print "\nCAP SET-UP: 0x", INTEGER.H'capSetupReg
 print "\nCONFIGURATION: 0x", INTEGER.H'configReg
 
 // calibrate threshold
-RecalibrateThresh()
+//RecalibrateThresh()
 
 endsub

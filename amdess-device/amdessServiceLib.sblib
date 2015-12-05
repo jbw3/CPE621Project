@@ -4,6 +4,7 @@
 
 dim res2                // result of operations (res2 so as not to conflict with res)
 dim numBytesExtracted   // for BleDecodeU8() function
+dim valueStr$
 
 ////
 //// CreateArmStateCharacteristic()
@@ -50,16 +51,56 @@ res2 = BleCharCommit(amdessSvcHandle, alarmState$, alarmStateCharHandle)
 endsub
 
 ////
+//// CreateBattLevelChar()
+////
+sub CreateBattLevelChar(byRef amdessSvcHandle, byRef battLevelCharHandle)
+
+    dim battLevel$
+    dim battLevelCharProps
+    dim battLevelMD
+
+    res2 = BleEncode8(battLevel$, 0, 0)    // battery level of 0 by default
+    battLevelCharProps = BLE_CHAR_PROP_READ
+
+    battLevelMD = BleAttrMetadata(1, 0, 1, 0, res2)
+    res2 = BleCharNew(battLevelCharProps, BleHandleUuid16(0x2A19), battLevelMD, 0, 0)
+    res2 = BleCharCommit(amdessSvcHandle, battLevel$, battLevelCharHandle)
+
+endsub
+
+////
+//// CreateCapSampleChar()
+////
+sub CreateCapSampleChar(byRef amdessSvcHandle, byRef hCapSampleChar)
+
+    dim capSampleMD, capSampleCccdMD
+    dim capSampleCharProps
+    dim capSample$
+
+    res2 = BleEncode32(capSample$, 0, 0)   // cap sample value of 0 by default
+    capSampleCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_NOTIFY
+
+    // ALARM STATE characteristic
+    capSampleMD = BleAttrMetadata(1, 0, 4, 0, res2)
+    capSampleCccdMD = BleAttrMetadata(1, 1, 2, 0, res2)
+    res2 = BleCharNew(capSampleCharProps, BleHandleUuid16(0xCDCD), capSampleMD, capSampleCccdMD, 0)
+    res2 = BleCharCommit(amdessSvcHandle, capSample$, hCapSampleChar)
+
+endsub
+
+////
 //// CreateAmdessService()
 ////
-sub CreateAmdessService(byRef amdessSvcHandle, byRef armStateCharHandle, byRef alarmStateCharHandle)
+sub CreateAmdessService(byRef amdessSvcHandle, byRef hArmStateChar, byRef hAlarmStateChar, byRef hBattLevelChar, byRef hCapSampleChar)
 
 dim hUuidAmdess
 
 hUuidAmdess = BleHandleUuid16(0xACDC)
 res2 = BLEServiceNew(BLE_SVC_PRIMARY, hUuidAmdess, amdessSvcHandle)
-CreateArmStateChar(amdessSvcHandle, armStateCharHandle)
-CreateAlarmStateChar(amdessSvcHandle, alarmStateCharHandle)
+CreateArmStateChar(amdessSvcHandle, hArmStateChar)
+CreateAlarmStateChar(amdessSvcHandle, hAlarmStateChar)
+CreateBattLevelChar(amdessSvcHandle, hBattLevelChar)
+CreateCapSampleChar(amdessSvcHandle, hCapSampleChar)
 
 endsub
 
@@ -67,7 +108,6 @@ endsub
 //// ReadU8CharValue()
 ////
 function ReadU8CharValue(byRef hChar, byRef valueInt)
-dim valueStr$
 
 // read characteristic (value attribute)
 res2 = BleCharValueRead(hChar, valueStr$)
@@ -83,18 +123,35 @@ endfunc res2
 //// WriteU8CharValue()
 ////
 function WriteU8CharValue(byRef hChar, byRef valueInt, byVal notify)
-dim valueStr$
 
 // encode an 8-bit int
 res2 = BleEncode8(valueStr$, valueInt, 0)
 
 if res2 == 0 then
-    if notify == 1 then        
+    if notify == 1 then
         res2 = BleCharValueNotify(hChar, valueStr$)
     else
         res2 = BleCharValueWrite(hChar, valueStr$)
     endif
 
+endif
+
+endfunc res2
+
+////
+//// Write32CharValue()
+////
+function Write32CharValue(byRef hChar, byRef valueInt, byVal notify)
+
+// encode a 32-bit int
+res2 = BleEncode32(valueStr$, valueInt, 0)
+
+if res2 == 0 then
+    if notify == 1 then
+        res2 = BleCharValueNotify(hChar, valueStr$)
+    else
+        res2 = BleCharValueWrite(hChar, valueStr$)
+    endif
 endif
 
 endfunc res2

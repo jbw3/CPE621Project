@@ -1,0 +1,20 @@
+#define SIO_1_PIN 2
+
+dim rc
+dim pinVal
+
+function HandleSIO_1GoLow()
+
+    pinVal = GpioRead(SIO_1_PIN)
+    print "\nSIO_1:", pinVal
+
+endfunc 0
+
+pinVal = GpioRead(SIO_1_PIN)
+print "\nSIO_1:", pinVal
+
+rc = GpioAssignEvent(0, SIO_1_PIN, 0)
+
+onevent EVDETECTCHAN0 call HandleSIO_1GoLow
+
+waitevent

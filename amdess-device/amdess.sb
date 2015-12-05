@@ -7,6 +7,13 @@
 ///////////////////////////////
 
 ///////////////////////////////
+// battery settings
+///////////////////////////////
+#define MIN_POWER_SUPPLY_LVL_MV 2100    // min power supply level = 2.1 V
+#define MAX_POWER_SUPPLY_LVL_MV 3600    // max power supply level = 3.6 V
+///////////////////////////////
+
+///////////////////////////////
 // gap settings
 ///////////////////////////////
 #define DEV_NAME "AMDeSS Sensor"
@@ -16,6 +23,7 @@
 #define MAX_CON_INT 1000000         // max connection interval (microseconds)
 #define SUPRV_TO 4000000
 #define SLAVE_LTCY 0
+#define SIO_1_PIN 2
 ///////////////////////////////
 
 ///////////////////////////////
@@ -33,6 +41,8 @@ dim r0              // "register 0" (just a variable that can be used local to
 dim hAmdessSvc       // AMDeSS service handle
 dim hArmStateChar       // ARM STATE characteristic handle
 dim hAlarmStateChar     // ALARM STATE characteristic handle
+dim hBattLevelChar      // BATTERY LEVEL characteristic handle
+dim hCapSampleChar      // CAP SAMPLE characteristic handle
 
 // program state variables
 dim armState            // holds value of arm state
@@ -43,6 +53,9 @@ dim alarmState          // holds value of alarm state
 dim alarmStateCCCD      // holds value of alarm state CCCD
 dim notifyAlarmState    // caches the notify bit from CCCD so it is only extracted
                         // from CCCD when it actually changes
+dim capSample
+dim capSampleCCCD
+dim notifyCapSample
 
 // uart vars
 dim uartRxStr$
@@ -59,10 +72,53 @@ alarmOnCmd$ = "alarm on\r"        // triggers an alarm condition (if armed)
 alarmOffCmd$ = "alarm off\r"   // turns off alarm (if alarming)
 
 ////
+//// EndProgram()
+////
+sub EndProgram()
+
+    print "\nTrying to disconnect BLE..."
+    if BleDisconnect(conn) == 0 then
+        print "\nDisconnected."
+    else
+        print "\nUnable to disconnect. BLE may not have been connected..."
+    endif
+    print "\nEnding program execution."
+
+endsub
+
+////
+//// GetBatteryLevel()
+////
+function GetBatteryLevel() as integer
+    dim batteryLevel
+
+    // get power supply in mV - min level
+    batteryLevel = ReadPwrSupplyMv() - MIN_POWER_SUPPLY_LVL_MV
+
+    r0 = MAX_POWER_SUPPLY_LVL_MV - MIN_POWER_SUPPLY_LVL_MV
+
+    // level = % of full range
+    batteryLevel = (batteryLevel * 100) / r0
+
+endfunc batteryLevel
+
+////
 //// Handle BLE Advertizing Timeout
 ////
 function HandleBleAdvTimeout()
     print "\nAdvert timed out."
+    EndProgram()
+endfunc 0
+
+////
+//// HandleSIO_1Change()
+////
+function HandleSIO_1Change()
+
+    res = GpioRead(SIO_1_PIN)
+    print "\nSIO_1 pin changed!"
+    EndProgram()
+
 endfunc 0
 
 ////
@@ -93,7 +149,7 @@ sub StartBle()
 
     // configure Amdess service
     print "\nConfiguring AMDeSS service..."
-    CreateAmdessService(hAmdessSvc, hArmStateChar, hAlarmStateChar)
+    CreateAmdessService(hAmdessSvc, hArmStateChar, hAlarmStateChar, hBattLevelChar, hCapSampleChar)
 
     if BleAdvertStart(BLE_ADV_INDIRECT, peerAdr$, advertInterval_ms, advertTimeout_ms, BLE_FP_DISABLE_WHITELIST) == 0 then
         print "\nStarted advertising..."
@@ -109,14 +165,14 @@ endsub
 sub UpdateIsSampling(byRef armStateInt, byRef alarmStateInt)
 
     // only update whether or not we're sampling if we're not in the middle of calibrating
-    if isCalibrating != 1 then
+    //if isCalibrating != 1 then
         // we sample if we are either (armed AND not alarming) OR if the Notify CCCD bit is set for capacitance debug data
-        if armStateInt == 1 && alarmStateInt == 0 then
-            StartSamplingAD7746(r0)
+        if armStateInt == 1 && alarmStateInt == 0 || notifyCapSample == 1 then
+            StartSamplingAD7746()
         else
             StopSamplingAD7746()
         endif
-    endif
+    //endif
 
 endsub
 
@@ -149,6 +205,8 @@ sub OnAlarmStateWritten()
     res = ReadArmState(armState)
     res = ReadAlarmState(alarmState)
     UpdateIsSampling(armState, alarmState)
+
+    print "\nALARM STATE WRITTEN:", alarmState
 
     // if alarm was just turned off, then recalibrate!
     //if alarmState == 0 then
@@ -188,6 +246,11 @@ sub OnArmStateWritten()
     res = ReadArmState(armState)
     UpdateIsSampling(armState, alarmState)
 
+    // if armState == 0 then
+    //     // we just disarmed - recalibrate!
+    //     RecalibrateThresh()
+    // endif
+
 endsub
 
 ////
@@ -205,6 +268,15 @@ function WriteArmState(byVal armStateInt)
 endfunc res
 
 ////
+//// WriteCapSample()
+////
+sub WriteCapSample(byRef capSampleInt)
+
+    res = Write32CharValue(hCapSampleChar, capSampleInt, notifyCapSample)
+
+endsub
+
+////
 //// ReadFromUart()
 ////
 function ReadFromUart()
@@ -217,13 +289,7 @@ uartStrLen = uartRead(uartRxStr$)
 
 if strcmp(uartRxStr$, termCmd$) == 0 then
 
-    print "\nTrying to disconnect BLE..."
-    if BleDisconnect(conn) == 0 then
-        print "\nDisconnected."
-    else
-        print "\nUnable to disconnect. BLE may not have been connected..."
-    endif
-    print "\nEnding program execution."
+    EndProgram()
     endFuncVal = 0
 
 elseif strcmp(uartRxStr$, armCmd$) == 0 then
@@ -297,6 +363,16 @@ elseif charHandle == hAlarmStateChar then
     alarmStateCCCD = cccdValue  // save alarm state CCCD value
     notifyAlarmState = alarmStateCCCD & 0x01    // extract bit 0 (notify bit)
 
+elseif charHandle == hCapSampleChar then
+    print "\nCap Sample CCCD written! Value: 0x", INTEGER.H'cccdValue
+    capSampleCCCD = cccdValue   // save cap sample CCCD value
+    notifyCapSample = capSampleCCCD & 0x01      // extract bit 0 (notify bit)
+
+    res = ReadAlarmState(alarmState)
+    res = ReadArmState(armState)
+
+    UpdateIsSampling(armState, alarmState)
+
 endif
 
 endfunc 1
@@ -349,13 +425,16 @@ function DoSampleCapData()
 
     endif
 
-    // todo: send capacitance values...
+    // write/notify capacitance debug values
+    WriteCapSample(r0)
 
 endfunc 1
 
 ////
 //// main()
 ////
+
+res = GpioAssignEvent(0, SIO_1_PIN, 0)
 
 // set up event handlers
 onevent EVBLE_ADV_TIMEOUT   call HandleBleAdvTimeout
@@ -365,11 +444,19 @@ onevent EVCHARCCCD          call HandleCCCDWritten
 onevent EVUARTRX            call HandleUartRx
 onevent EVTMR0              call DoSampleCapData
 onevent EVTMR3              call ReadFromUart
+onevent EVDETECTCHAN0       call HandleSIO_1Change
 
 // init services and start advertising
 StartBle()
 
-// init/calibrate AD7746
+// init/calibrate AD7746'
 SetupAD7746()
+
+print "\nPower supply:", ReadPwrSupplyMv(), "mV"
+r0 = GetBatteryLevel()
+print "\nBattery level:", r0, "%"
+
+// write battery level
+res = WriteU8CharValue(hBattLevelChar, r0, 0)
 
 waitevent
