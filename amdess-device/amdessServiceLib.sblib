@@ -46,7 +46,16 @@ alarmStateCharProps = BLE_CHAR_PROP_READ | BLE_CHAR_PROP_WRITE | BLE_CHAR_PROP_N
 alarmStateValueMD = BleAttrMetadata(1, 1, 1, 0, res2)
 alarmStateCccdMD = BleAttrMetadata(1, 1, 2, 0, res2)
 res2 = BleCharNew(alarmStateCharProps, BleHandleUuid16(0xFACE), alarmStateValueMD, alarmStateCccdMD, 0)
+
+if res2 != 0 then
+    print "\nUnable to create ALARM STATE"
+endif
+
 res2 = BleCharCommit(amdessSvcHandle, alarmState$, alarmStateCharHandle)
+
+if res2 != 0 then
+    print "\nUnable to commit ALARM STATE"
+endif
 
 endsub
 
